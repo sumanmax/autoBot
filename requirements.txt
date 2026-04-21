@@ -1,5 +1,3 @@
 pandas
-ta
-requests
 python-telegram-bot
-git+https://github.com/luclover/iqoptionapi.git
+iqoptionapi-stable
