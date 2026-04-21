@@ -5,9 +5,9 @@ if not hasattr(collections, 'Iterable'):
 
 import os
 import time
-import json
-import pandas as pd  # মডিউলটি এখানে ইমপোর্ট হবে
-from datetime import datetime
+import pandas as pd
+from iqoptionapi.stable_api import IQ_Option
+# বাকি কোড...
 
 # ==========================================
 # CONFIGURATION
