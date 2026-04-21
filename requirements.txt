@@ -1,4 +1,6 @@
 pandas
-python-telegram-bot==20.3
+ta
+requests
+python-telegram-bot
 iqoptionapi-stable
-websocket-client==0.56.0
+websocket-client==0.56
