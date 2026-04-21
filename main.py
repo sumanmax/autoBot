@@ -3,16 +3,11 @@ if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
 
+import os
 import time
 import json
-import os
-import pandas as pd
+import pandas as pd  # মডিউলটি এখানে ইমপোর্ট হবে
 from datetime import datetime
-
-try:
-    from iqoptionapi.stable_api import IQ_Option
-except ImportError:
-    print("❌ IQ Option library not found! Please check requirements.txt")
 
 # ==========================================
 # CONFIGURATION
