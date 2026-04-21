@@ -1,3 +1,9 @@
+import collections
+# Python 3.10+ এর জন্য এটি প্রয়োজন হতে পারে যদি লাইব্রেরি এরর দেয়
+if not hasattr(collections, 'Iterable'):
+    import collections.abc
+    collections.Iterable = collections.abc.Iterable
+    
 import time
 import json
 import os
