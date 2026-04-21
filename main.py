@@ -2,7 +2,6 @@ import collections
 if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
-    
 import time
 import json
 import os
