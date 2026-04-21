@@ -1,3 +1,1 @@
-pandas
-python-telegram-bot==20.3
-iqoptionapi
+git+https://github.com/n1nj4z33/iqoptionapi.git
