@@ -2,16 +2,17 @@ import collections
 if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
-    
+
 import time
 import json
 import os
 import pandas as pd
 from datetime import datetime
-from iqoptionapi.stable_api import IQ_Option
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.error import NetworkError
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
+
+try:
+    from iqoptionapi.stable_api import IQ_Option
+except ImportError:
+    print("❌ IQ Option library not found! Please check requirements.txt")
 
 # ==========================================
 # CONFIGURATION
