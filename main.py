@@ -5,9 +5,11 @@ if not hasattr(collections, 'Iterable'):
 
 import os
 import time
+import json
 import pandas as pd
+from datetime import datetime
+
 from iqoptionapi.stable_api import IQ_Option
-# বাকি কোড...
 
 # ==========================================
 # CONFIGURATION
