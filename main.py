@@ -22,7 +22,7 @@ from iqoptionapi.stable_api import IQ_Option
 # ==========================================
 BOT_TOKEN = "8734653401:AAExMDj1PTXc1_EnNI5SLpuMyLtfLwXZdAk"
 IQ_USER = "atylishmax1407@gmail.com"
-IQ_PASS = "max1407@"
+IQ_PASS = "max1407"
 
 # ==========================================
 # STREAMLIT UI
