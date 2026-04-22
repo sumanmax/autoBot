@@ -1,5 +1,4 @@
 import collections
-# Compatibility fix for older libraries
 if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
@@ -7,6 +6,7 @@ if not hasattr(collections, 'Iterable'):
 import os
 import time
 import json
+import asyncio
 import pandas as pd
 import streamlit as st
 from datetime import datetime
@@ -33,19 +33,15 @@ DB_FILE = "users_data.json"
 # ==========================================
 st.set_page_config(page_title="AutoBot Server", page_icon="🤖")
 st.title("🤖 AutoBot Telegram Server")
-st.markdown("---")
-st.success("Server is Live!")
-st.write(f"**Last Heartbeat:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-st.info("Note: Keep this tab open to keep the bot active.")
+st.success("Server is Active!")
+st.info("Bot is running in the background. Check Telegram.")
 
 # --- Database Logic ---
 def load_data():
     if os.path.exists(DB_FILE):
         with open(DB_FILE, 'r') as f:
-            try:
-                return json.load(f)
-            except:
-                return {}
+            try: return json.load(f)
+            except: return {}
     return {}
 
 def save_data(data):
@@ -59,152 +55,71 @@ def get_iq_client():
     client.connect()
     return client
 
-def check_connection(client):
-    if not client.check_connect():
-        client.connect()
-
-# --- Instant Signal Logic ---
 def get_instant_signal(pair, tf):
     try:
         client = get_iq_client()
-        check_connection(client)
-        
+        if not client.check_connect(): client.connect()
         candles = client.get_candles(pair, int(tf) * 60, 30, time.time())
-        if not candles:
-            return "CALL ⬆️", "88%"
-        
+        if not candles: return "CALL ⬆️", "88%"
         df = pd.DataFrame(candles)
-        last_close = df['close'].iloc[-1]
-        open_price = df['open'].iloc[-1]
-        
-        if last_close > open_price:
-            return "CALL (BUY) ⬆️", "94%"
-        else:
-            return "PUT (SELL) ⬇️", "94%"
-    except Exception as e:
-        return "CALL ⬆️", "85%"
+        if df['close'].iloc[-1] > df['open'].iloc[-1]: return "CALL (BUY) ⬆️", "94%"
+        else: return "PUT (SELL) ⬇️", "94%"
+    except: return "CALL ⬆️", "85%"
 
 # --- Bot Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     data = load_data()
-    
     if user_id not in data:
         data[user_id] = {'signals_used': 0, 'is_verified': False}
         save_data(data)
-
-    user = data[user_id]
     
-    if user['is_verified']:
-        keyboard = [[InlineKeyboardButton("📊 Get VIP Signal", callback_data='list_assets')]]
-        msg = "🔥 **Welcome Back VIP Member!**\n\nYour account is active. Click below to start trading."
-    else:
-        keyboard = [[InlineKeyboardButton("📊 Get Signal (1 Free)", callback_data='list_assets')]]
-        msg = (f"🔥 **Quotex King Bot**\n\n"
-               f"To get unlimited access:\n"
-               f"1️⃣ Register: [Click Here]({REG_LINK})\n"
-               f"2️⃣ Deposit: Min $30\n"
-               f"3️⃣ Send your Trader ID here for verification.")
-
-    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown', disable_web_page_preview=True)
+    user = data[user_id]
+    kb = [[InlineKeyboardButton("📊 Get Signal", callback_data='list_assets')]]
+    await update.message.reply_text("🔥 **Bot Active!**", reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    user_id = str(query.from_user.id)
     await query.answer()
-    
-    data = load_data()
-    user = data.get(user_id, {'signals_used': 0, 'is_verified': False})
-    
-    if user['signals_used'] >= 1 and not user['is_verified']:
-        msg = (f"⚠️ **Access Locked!**\n\nYour free trial is over. Please register and deposit to continue.\n\n"
-               f"🔗 [Register Here]({REG_LINK})")
-        await query.edit_message_text(msg, parse_mode='Markdown', disable_web_page_preview=True)
-        return
-
-    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURJPY", "USDCAD"]
-    keyboard = []
-    temp = []
-    for asset in assets:
-        temp.append(InlineKeyboardButton(asset, callback_data=f'p_{asset}'))
-        if len(temp) == 2:
-            keyboard.append(temp)
-            temp = []
-            
-    await query.edit_message_text("Select an Asset for Instant Analysis:", reply_markup=InlineKeyboardMarkup(keyboard))
+    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
+    kb = [[InlineKeyboardButton(a, callback_data=f'p_{a}')] for a in assets]
+    await query.edit_message_text("Select Asset:", reply_markup=InlineKeyboardMarkup(kb))
 
 async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     pair = query.data.split('_')[1]
-    keyboard = [[InlineKeyboardButton("1 Min", callback_data=f'tf_1_{pair}'), 
-                 InlineKeyboardButton("5 Min", callback_data=f'tf_5_{pair}')]]
-    await query.edit_message_text(f"Asset: {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(keyboard))
+    kb = [[InlineKeyboardButton("1 Min", callback_data=f'tf_1_{pair}'), InlineKeyboardButton("5 Min", callback_data=f'tf_5_{pair}')]]
+    await query.edit_message_text(f"Asset: {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
 
 async def generate_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    user_id = str(query.from_user.id)
     await query.answer()
     _, tf, pair = query.data.split('_')
-    
-    await query.edit_message_text(f"⚡ Analyzing {pair} market... (5s)")
-    time.sleep(3) 
-    
+    await query.edit_message_text(f"⚡ Analyzing {pair}...")
     action, acc = get_instant_signal(pair, tf)
-    
-    data = load_data()
-    data[user_id]['signals_used'] += 1
-    save_data(data)
-    
-    msg = (f"🎯 **INSTANT VIP SIGNAL**\n"
-           f"━━━━━━━━━━━━━━━\n"
-           f"💹 **Asset:** {pair}\n"
-           f"📊 **Action:** {action}\n"
-           f"🎯 **Accuracy:** {acc}\n"
-           f"🚀 **Entry Now:** {datetime.now().strftime('%H:%M:%S')}\n"
-           f"━━━━━━━━━━━━━━━\n"
-           f"📢 *Trade fast for the best result!*")
+    msg = f"🎯 **SIGNAL**\nAsset: {pair}\nAction: {action}\nAccuracy: {acc}"
     await query.edit_message_text(msg, parse_mode='Markdown')
 
-async def handle_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    username = update.effective_user.username or "User"
-    text = update.message.text
-    if text.isdigit():
-        await update.message.reply_text("✅ ID Received! Please wait for Admin approval.")
-        admin_msg = (f"🔔 **New Verification Request**\n"
-                     f"User: @{username}\n"
-                     f"ID: `{user_id}`\n"
-                     f"Trader ID: `{text}`\n\n"
-                     f"To approve, click:\n`/approve {user_id}`")
-        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, parse_mode='Markdown')
-
-async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID: return
-    try:
-        target = str(context.args[0])
-        data = load_data()
-        if target in data:
-            data[target]['is_verified'] = True
-            save_data(data)
-            await update.message.reply_text(f"✅ User {target} Approved!")
-            await context.bot.send_message(chat_id=int(target), text="🎊 **VIP Unlocked!**\nYour ID is verified. You now have unlimited access.")
-    except:
-        await update.message.reply_text("Usage: /approve <user_id>")
-
-# --- Application Entry Point ---
-def main():
+# --- FIXED RUNNER FOR STREAMLIT ---
+async def run_bot():
     app = Application.builder().token(BOT_TOKEN).build()
-    
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("approve", approve))
     app.add_handler(CallbackQueryHandler(list_assets, pattern='^list_assets$'))
     app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
     app.add_handler(CallbackQueryHandler(generate_signal, pattern='^tf_'))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_id))
     
-    print("Bot is Running...")
-    app.run_polling()
+    # Ye line error fix karti hai Streamlit par
+    async with app:
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling(drop_pending_updates=True)
+        # Server ko zinda rakhne ke liye loop
+        while True:
+            await asyncio.sleep(10)
 
 if __name__ == '__main__':
-    main()
+    try:
+        asyncio.run(run_bot())
+    except Exception as e:
+        st.error(f"Bot Error: {e}")
