@@ -1,5 +1,4 @@
 streamlit
 pandas
 python-telegram-bot
-pytz
 git+https://github.com/Lu-Yi-Hsun/iqoptionapi.git
