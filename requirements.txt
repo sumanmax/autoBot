@@ -1,3 +1,4 @@
+streamlit
 pandas
-python-telegram-bot==20.3
-https://github.com/luclover/iqoptionapi/archive/refs/heads/master.zip
+python-telegram-bot --upgrade
+iqoptionapi
