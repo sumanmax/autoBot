@@ -1,4 +1,5 @@
 import collections
+# Compatibility fix for older libraries
 if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
@@ -7,20 +8,33 @@ import os
 import time
 import json
 import pandas as pd
+import streamlit as st
 from datetime import datetime
 
+# Telegram Libraries
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+
+# IQ Option API
 from iqoptionapi.stable_api import IQ_Option
 
 # ==========================================
 # CONFIGURATION
 # ==========================================
 BOT_TOKEN = "8734653401:AAExMDj1PTXc1_EnNI5SLpuMyLtfLwXZdAk"
-IQ_USER =  "atylishmax1407@gmail.com"
+IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
 ADMIN_ID = 7852639173
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 DB_FILE = "users_data.json"
+
 # ==========================================
+# STREAMLIT DASHBOARD (UI)
+# ==========================================
+st.set_page_config(page_title="AutoBot Server", page_icon="🤖")
+st.title("🤖 AutoBot Telegram Server")
+st.status("Bot is currently running...")
+st.write(f"Last Heartbeat: {datetime.now().strftime('%H:%M:%S')}")
 
 # --- Database Logic ---
 def load_data():
@@ -41,22 +55,23 @@ def connect_iq():
     client = IQ_Option(IQ_USER, IQ_PASS)
     check, reason = client.connect()
     if not check:
-        print(f"Connection Failed: {reason}")
+        st.error(f"IQ Option Connection Failed: {reason}")
     return client
 
-iq_client = connect_iq()
+# Global client initialization
+if 'iq_client' not in st.session_state:
+    st.session_state.iq_client = connect_iq()
 
 def check_connection():
-    global iq_client
-    if not iq_client.check_connect():
-        print("IQ Option disconnected. Reconnecting...")
-        iq_client.connect()
+    if not st.session_state.iq_client.check_connect():
+        st.warning("IQ Option disconnected. Reconnecting...")
+        st.session_state.iq_client.connect()
 
 # --- Instant Signal Logic ---
 def get_instant_signal(pair, tf):
     try:
         check_connection() 
-        candles = iq_client.get_candles(pair, int(tf) * 60, 30, time.time())
+        candles = st.session_state.iq_client.get_candles(pair, int(tf) * 60, 30, time.time())
         if not candles:
             return "CALL ⬆️", "88%"
         
@@ -64,17 +79,15 @@ def get_instant_signal(pair, tf):
         last_close = df['close'].iloc[-1]
         open_price = df['open'].iloc[-1]
         
-        # Momentum based instant decision
         if last_close > open_price:
             return "CALL (BUY) ⬆️", "94%"
         else:
             return "PUT (SELL) ⬇️", "94%"
     except Exception as e:
-        print(f"Signal Logic Error: {e}")
+        st.error(f"Signal Logic Error: {e}")
         return "CALL ⬆️", "85%"
 
 # --- Bot Handlers ---
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     data = load_data()
@@ -182,7 +195,8 @@ async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text("Usage: /approve <user_id>")
 
-def main():
+# --- Application Entry Point ---
+def run_bot():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve", approve))
@@ -190,8 +204,9 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
     app.add_handler(CallbackQueryHandler(generate_signal, pattern='^tf_'))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_id))
-    print("Bot is Running...")
+    
+    st.info("Bot is Running... Check Telegram!")
     app.run_polling()
 
 if __name__ == '__main__':
-    main()
+    run_bot()
