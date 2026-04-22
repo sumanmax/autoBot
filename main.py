@@ -33,8 +33,10 @@ DB_FILE = "users_data.json"
 # ==========================================
 st.set_page_config(page_title="AutoBot Server", page_icon="🤖")
 st.title("🤖 AutoBot Telegram Server")
-st.status("Bot is currently running...")
-st.write(f"Last Heartbeat: {datetime.now().strftime('%H:%M:%S')}")
+st.markdown("---")
+st.success("Server is Live!")
+st.write(f"**Last Heartbeat:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+st.info("Note: Keep this tab open to keep the bot active.")
 
 # --- Database Logic ---
 def load_data():
@@ -51,27 +53,23 @@ def save_data(data):
         json.dump(data, f)
 
 # --- IQ Option Connection ---
-def connect_iq():
+@st.cache_resource
+def get_iq_client():
     client = IQ_Option(IQ_USER, IQ_PASS)
-    check, reason = client.connect()
-    if not check:
-        st.error(f"IQ Option Connection Failed: {reason}")
+    client.connect()
     return client
 
-# Global client initialization
-if 'iq_client' not in st.session_state:
-    st.session_state.iq_client = connect_iq()
-
-def check_connection():
-    if not st.session_state.iq_client.check_connect():
-        st.warning("IQ Option disconnected. Reconnecting...")
-        st.session_state.iq_client.connect()
+def check_connection(client):
+    if not client.check_connect():
+        client.connect()
 
 # --- Instant Signal Logic ---
 def get_instant_signal(pair, tf):
     try:
-        check_connection() 
-        candles = st.session_state.iq_client.get_candles(pair, int(tf) * 60, 30, time.time())
+        client = get_iq_client()
+        check_connection(client)
+        
+        candles = client.get_candles(pair, int(tf) * 60, 30, time.time())
         if not candles:
             return "CALL ⬆️", "88%"
         
@@ -84,7 +82,6 @@ def get_instant_signal(pair, tf):
         else:
             return "PUT (SELL) ⬇️", "94%"
     except Exception as e:
-        st.error(f"Signal Logic Error: {e}")
         return "CALL ⬆️", "85%"
 
 # --- Bot Handlers ---
@@ -192,12 +189,13 @@ async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
             save_data(data)
             await update.message.reply_text(f"✅ User {target} Approved!")
             await context.bot.send_message(chat_id=int(target), text="🎊 **VIP Unlocked!**\nYour ID is verified. You now have unlimited access.")
-    except Exception as e:
+    except:
         await update.message.reply_text("Usage: /approve <user_id>")
 
 # --- Application Entry Point ---
-def run_bot():
+def main():
     app = Application.builder().token(BOT_TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("approve", approve))
     app.add_handler(CallbackQueryHandler(list_assets, pattern='^list_assets$'))
@@ -205,8 +203,8 @@ def run_bot():
     app.add_handler(CallbackQueryHandler(generate_signal, pattern='^tf_'))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_id))
     
-    st.info("Bot is Running... Check Telegram!")
+    print("Bot is Running...")
     app.run_polling()
 
 if __name__ == '__main__':
-    run_bot()
+    main()
