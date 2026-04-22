@@ -5,16 +5,14 @@ if not hasattr(collections, 'Iterable'):
 
 import os
 import time
-import json
 import asyncio
 import pandas as pd
 import streamlit as st
-import pytz  # Timezone-এর জন্য
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Telegram Libraries
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # IQ Option API
 from iqoptionapi.stable_api import IQ_Option
@@ -25,32 +23,15 @@ from iqoptionapi.stable_api import IQ_Option
 BOT_TOKEN = "8734653401:AAExMDj1PTXc1_EnNI5SLpuMyLtfLwXZdAk"
 IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
-ADMIN_ID = 7852639173
-REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
-DB_FILE = "users_data.json"
-
-# IST Timezone সেট করা
-IST = pytz.timezone('Asia/Kolkata')
 
 # ==========================================
-# STREAMLIT DASHBOARD
+# STREAMLIT UI
 # ==========================================
-st.set_page_config(page_title="AutoBot VIP Server", page_icon="🚀")
-st.title("🚀 AutoBot VIP (IST Mode)")
-st.success("Server is Active with IST Timing")
+st.set_page_config(page_title="AutoBot VIP", page_icon="🚀")
+st.title("🚀 AutoBot VIP: IST Time Fixed")
+st.success("Status: Bot is Active")
 
-# --- Database & Connection ---
-def load_data():
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, 'r') as f:
-            try: return json.load(f)
-            except: return {}
-    return {}
-
-def save_data(data):
-    with open(DB_FILE, 'w') as f:
-        json.dump(data, f)
-
+# --- IQ Option Connection ---
 @st.cache_resource
 def get_iq_client():
     client = IQ_Option(IQ_USER, IQ_PASS)
@@ -66,8 +47,6 @@ def get_instant_signal(pair, tf):
         if not candles: return "CALL ⬆️", "85%"
         
         df = pd.DataFrame(candles)
-        
-        # Indicator Calculation
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -75,26 +54,20 @@ def get_instant_signal(pair, tf):
         df['rsi'] = 100 - (100 / (1 + rs))
         df['ema'] = df['close'].rolling(window=10).mean()
         
-        last_rsi = df['rsi'].iloc[-1]
-        last_close = df['close'].iloc[-1]
-        last_ema = df['ema'].iloc[-1]
+        last_rsi, last_close, last_ema = df['rsi'].iloc[-1], df['close'].iloc[-1], df['ema'].iloc[-1]
 
-        # 85%+ Accuracy Logic
         if last_close > last_ema:
-            acc = "88%" if last_rsi < 65 else "82%"
-            return "CALL (BUY) ⬆️", acc
+            return "CALL (BUY) ⬆️", ("88%" if last_rsi < 65 else "82%")
         else:
-            acc = "88%" if last_rsi > 35 else "82%"
-            return "PUT (SELL) ⬇️", acc
-                
+            return "PUT (SELL) ⬇️", ("88%" if last_rsi > 35 else "82%")
     except:
         return "CALL ⬆️", "85%"
 
 # --- Bot Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = [[InlineKeyboardButton("📊 Get VIP Signal (IST)", callback_data='list_assets')]]
-    await update.message.reply_text("🔥 **AutoBot VIP IST Mode**\n\nClick for high accuracy signals with Indian Time.", 
-                                   reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
+    await update.message.reply_text("🔥 **AutoBot VIP Mode Active!**\nTimezone: India (IST)", 
+                                   reply_markup=InlineKeyboardMarkup(kb))
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -116,12 +89,14 @@ async def generate_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     _, tf, pair = query.data.split('_')
     
-    await query.edit_message_text(f"🚀 **Analyzing {pair} for IST Entry...**")
+    await query.edit_message_text(f"🚀 **Analyzing {pair}...**")
     
     action, acc = get_instant_signal(pair, tf)
     
-    # IST টাইম জেনারেট করা
-    current_time_ist = datetime.now(IST).strftime('%H:%M:%S')
+    # --- FIXED IST TIME LOGIC ---
+    # UTC টাইমের সাথে ৫ ঘণ্টা ৩০ মিনিট যোগ করা হচ্ছে
+    ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    current_time_ist = ist_time.strftime('%I:%M:%S %p') # 12-hour format with AM/PM
     
     msg = (f"🎯 **VIP INSTANT SIGNAL**\n"
            f"━━━━━━━━━━━━━━━\n"
@@ -134,6 +109,7 @@ async def generate_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.edit_message_text(msg, parse_mode='Markdown')
 
+# --- Run Bot ---
 async def run_bot():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -151,5 +127,7 @@ async def run_bot():
 if __name__ == '__main__':
     try:
         asyncio.run(run_bot())
-    except Exception as e:
-        st.error(f"Bot Error: {e}")
+    except Exception:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(run_bot())
