@@ -20,7 +20,7 @@ from iqoptionapi.stable_api import IQ_Option
 # ==========================================
 # CONFIGURATION
 # ==========================================
-BOT_TOKEN = "8734653401:AAExMDj1PTXc1_EnNI5SLpuMyLtfLwXZdAk"
+BOT_TOKEN = "8734653401:AAHnZKY6RCJIFQ8U4tGCOwjLwCZbJi-a4kQ"
 IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
 
