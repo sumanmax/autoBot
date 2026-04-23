@@ -23,28 +23,29 @@ ADMIN_ID = 7852639173
 IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
-DB_FILE = "bot_database.json"
+DB_FILE = "bot_data.json"
 
-# Database structure: { "verified": [], "used_free": [] }
-if not os.path.exists(DB_FILE):
-    with open(DB_FILE, "w") as f: json.dump({"verified": [], "used_free": []}, f)
-
+# Database handling with Error Correction
 def get_db():
-    with open(DB_FILE, "r") as f: return json.load(f)
+    if not os.path.exists(DB_FILE):
+        data = {"verified": [], "used_free": []}
+        with open(DB_FILE, "w") as f: json.dump(data, f)
+        return data
+    with open(DB_FILE, "r") as f:
+        try: return json.load(f)
+        except: return {"verified": [], "used_free": []}
 
 def save_db(data):
     with open(DB_FILE, "w") as f: json.dump(data, f)
 
 # ==========================================
-# 📊 ADVANCED SIGNAL LOGIC
+# 📊 SIGNAL LOGIC
 # ==========================================
 def get_advanced_signal(pair, tf):
     try:
         client = IQ_Option(IQ_USER, IQ_PASS)
         client.connect()
-        candles = client.get_candles(pair, int(tf) * 60, 60, time.time())
-        if not candles: return "WAIT ⏳", "Checking..."
-        
+        candles = client.get_candles(pair, int(tf) * 60, 40, time.time())
         df = pd.DataFrame(candles)
         df['ema'] = df['close'].rolling(10).mean()
         delta = df['close'].diff()
@@ -55,9 +56,8 @@ def get_advanced_signal(pair, tf):
         last = df.iloc[-1]
         if last['close'] > last['ema'] and last['rsi'] > 50:
             return "CALL (BUY) ⬆️", "92% 🔥"
-        elif last['close'] < last['ema'] and last['rsi'] < 50:
+        else:
             return "PUT (SELL) ⬇️", "92% 🔥"
-        return "WAIT ⏳", "Sideways"
     except: return "CALL ⬆️", "85%"
 
 # ==========================================
@@ -68,35 +68,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = get_db()
     
     if uid in db["verified"]:
-        msg = "✅ **Welcome Back VIP!**\nUnlimited signals are active for you."
+        msg = "✅ **VIP ACCESS ACTIVE**\nAap unlimited signals le sakte hain."
         kb = [[InlineKeyboardButton("📊 Get VIP Signal", callback_data='list_assets')]]
     elif uid not in db["used_free"]:
-        msg = "🎁 **Welcome!**\nAapko **1 FREE VIP Signal** milta hai. Iske baad aage ke signals ke liye register karna hoga."
+        msg = "🎁 **WELCOME TO VIP BOT**\n\nAapko **1 FREE VIP Signal** milta hai check karne ke liye. Uske baad access lock ho jayega."
         kb = [[InlineKeyboardButton("⚡ Get My 1 Free Signal", callback_data='list_assets')]]
     else:
-        # Attractive Marketing Message for Locked Users
+        # Aapka set kiya hua attractive message aur link
         msg = (
-            "🚀 **FREE LIMIT EXHAUSTED!**\n\n"
-            "Aapne apna free signal use kar liya hai. Agar aap daily **$50-$100** profit banana chahte hain hamare VIP signals se, toh niche diye gaye steps follow karein:\n\n"
-            "1️⃣ **Naya Account Banayein:**\nNiche di gayi link se register karein (Zaroori hai):\n"
-            f"🔗 [CLICK HERE TO REGISTER]({REG_LINK})\n\n"
-            "2️⃣ **Deposit & ID:**\nMinimum deposit karke apni **Trader ID** yahan niche message mein bhein.\n\n"
-            "💎 **VIP Benefits:**\n"
-            "✅ 90%+ Accuracy Signals\n"
-            "✅ No Expiry Access\n"
-            "✅ 24/7 Support\n\n"
-            "📩 *ID bhejte hi Admin aapko manual verify karke VIP access de dega!*"
+            "⚠️ **FREE LIMIT EXHAUSTED!**\n\n"
+            "Aapka free signal use ho chuka hai. Ab VIP signals ke liye niche diye gaye steps follow karein:\n\n"
+            "👉 **Step 1:** Niche di gayi link se naya account banayein:\n"
+            f"🔗 [REGISTER HERE]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n\n"
+            "👉 **Step 2:** Account bana kar Minimum deposit karein.\n\n"
+            "👉 **Step 3:** Apni **Trader ID** yahan niche message mein bhejein.\n\n"
+            "💎 **VIP Benefits:** 92% Accuracy, Lifetime Support, No Loss Strategy!"
         )
-        kb = [[InlineKeyboardButton("🔗 Create Account Now", url=REG_LINK)]]
+        kb = [[InlineKeyboardButton("🚀 Register Now", url=REG_LINK)]]
     
-    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
+    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
 
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     uid = query.from_user.id
     db = get_db()
     
-    # Logic: Only allow if verified OR if they haven't used their free signal
     if uid in db["verified"] or uid not in db["used_free"]:
         await query.answer()
         _, tf, pair = query.data.split('_')
@@ -109,29 +105,25 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
                f"💹 **Asset:** {pair}\n📊 **Action:** {act}\n"
                f"🎯 **Accuracy:** {acc}\n🕒 **Time (IST):** {ist.strftime('%I:%M:%S %p')}\n"
                f"━━━━━━━━━━━━━━━")
-        
         await query.edit_message_text(msg, parse_mode='Markdown')
         
-        # Mark as used if it was their first time
         if uid not in db["verified"] and uid not in db["used_free"]:
             db["used_free"].append(uid)
             save_db(db)
-            await context.bot.send_message(uid, "⚠️ **Free Limit Over!** Ab unlimited signals ke liye /start dabayein aur registration complete karein.")
+            await context.bot.send_message(uid, "🚫 **Free Access Finished!**\nAb aage ke signals ke liye /start dabayein aur registration complete karein.")
     else:
-        await query.answer("Access Denied! Please register.", show_alert=True)
-        await start(query, context) # Show them the registration message
+        await query.answer("Access Locked! Registration Required.", show_alert=True)
+        # Force the registration message
+        msg = (f"🚀 **VIP ACCESS LOCKED**\n\nUnlimited signals ke liye hamari link se account banayein:\n🔗 {REG_LINK}\n\nAccount bana kar Trader ID bhejein.")
+        await query.message.reply_text(msg, disable_web_page_preview=True)
 
 async def handle_trader_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     db = get_db()
     if uid in db["verified"]: return
     
-    await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=f"🔔 **VIP Request**\nUser: `{uid}`\nTrader ID: `{update.message.text}`\n\nApprove: `/verify {uid}`",
-        parse_mode='Markdown'
-    )
-    await update.message.reply_text("📩 **Trader ID Received!** Admin check karke aapka VIP access enable kar raha hai. Please wait...")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔔 **VIP Request**\nUser: `{uid}`\nTrader ID: `{update.message.text}`\n\nApprove: `/verify {uid}`")
+    await update.message.reply_text("📩 **ID Received!** Admin verify karke 5-10 mins mein access de dega.")
 
 async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
@@ -145,7 +137,7 @@ async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(target, "🎉 **VIP ACCESS ACTIVATED!** Ab aap unlimited signals use kar sakte hain. Click /start")
     except: pass
 
-# --- Asset Listing Helpers ---
+# --- Help Handlers ---
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -175,5 +167,5 @@ async def main():
     while True: await asyncio.sleep(10)
 
 if __name__ == '__main__':
-    st.title("AutoBot VIP Server ✅")
+    st.write("Server Active ✅")
     asyncio.run(main())
