@@ -20,7 +20,7 @@ from iqoptionapi.stable_api import IQ_Option
 # ==========================================
 BOT_TOKEN = "8734653401:AAF_cGvEmi-PY4Y3pFbzFBnZet5KT3cYt8E"
 ADMIN_ID = 7852639173
-SUPPORT_FOR DM = "@mstraders7"
+SUPPORT_FOR_DM = "@mstraders7"
 IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
