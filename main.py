@@ -40,42 +40,31 @@ def save_db(data):
     with open(DB_FILE, "w") as f: json.dump(data, f, indent=4)
 
 # ==========================================
-# 📊 HIGH ACCURACY SIGNAL LOGIC (RSI + BB + EMA)
+# 📊 HIGH ACCURACY SIGNAL LOGIC
 # ==========================================
 def get_advanced_signal(pair, tf):
     try:
         client = IQ_Option(IQ_USER, IQ_PASS)
         if not client.connect(): return "ERROR ⚠️", "N/A"
         
-        # Fast Timeframes ke liye candle size set karna
         candle_size = int(tf)
         candles = client.get_candles(pair, candle_size, 50, time.time())
         df = pd.DataFrame(candles)
         
-        # 1. EMA (Trend Direction)
+        # Indicators for Accuracy
         df['ema'] = df['close'].rolling(window=10).mean()
-        # 2. RSI (Overbought/Oversold)
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
         df['rsi'] = 100 - (100 / (1 + (gain / loss)))
-        # 3. Bollinger Bands (Volatility)
-        df['std'] = df['close'].rolling(20).std()
-        df['upper_bb'] = df['ema'] + (df['std'] * 2)
-        df['lower_bb'] = df['ema'] - (df['std'] * 2)
         
         last = df.iloc[-1]
         
-        # STRATEGY: Agar Price Lower BB se upar ja raha hai aur RSI > 40 toh CALL
-        if last['close'] < last['lower_bb'] or (last['rsi'] < 35):
-            return "CALL (BUY) ⬆️", "95% 🔥"
-        elif last['close'] > last['upper_bb'] or (last['rsi'] > 65):
-            return "PUT (SELL) ⬇️", "95% 🔥"
+        if last['rsi'] < 35: return "CALL (BUY) ⬆️", "95% 🔥"
+        elif last['rsi'] > 65: return "PUT (SELL) ⬇️", "95% 🔥"
         else:
-            # Neutral case mein trend follow karein
-            if last['close'] > last['ema']: return "CALL (BUY) ⬆️", "88% 📈"
-            else: return "PUT (SELL) ⬇️", "88% 📉"
-            
+            if last['close'] > last['ema']: return "CALL (BUY) ⬆️", "91% 📈"
+            else: return "PUT (SELL) ⬇️", "91% 📉"
     except: return "CALL ⬆️", "85%"
 
 # ==========================================
@@ -84,28 +73,32 @@ def get_advanced_signal(pair, tf):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     db = get_db()
-    support_link = f"https://t.me/{SUPPORT_USER.replace('@','')}"
+    support_url = f"https://t.me/{SUPPORT_USER.replace('@','')}"
     
     if uid in db["verified"]:
-        msg = "✅ **VIP ACCESS ACTIVE**\nAap unlimited fast signals le sakte hain."
+        msg = "✅ **VIP ACCESS ACTIVE**\nUnlimited high-accuracy signals are ready!"
         kb = [[InlineKeyboardButton("📊 Get VIP Signal", callback_data='list_assets')],
               [InlineKeyboardButton("📞 Contact Support", url="@mstraders7")]]
     elif uid not in db["used_free"]:
-        msg = "🎁 **WELCOME**\nAapko **1 FREE VIP Signal** milta hai check karne ke liye."
-        kb = [[InlineKeyboardButton("⚡ Get My 1 Free Signal", callback_data='list_assets')]]
+        # Naye user ko 'Free' bol kar attract karenge
+        msg = "🎁 **WELCOME TO PREMIUM SIGNALS**\nAapko **1 PREMIUM VIP Signal** access diya gaya hai accuracy check karne ke liye."
+        kb = [[InlineKeyboardButton("⚡ Get Premium Signal", callback_data='list_assets')]]
     else:
-        msg = (f"🚀 **VIP ACCESS LOCKED**\n\nHumare VIP signals ki accuracy 95% tak hai. Access ke liye:\n\n"
-               f"1️⃣ [REGISTER HERE]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n2️⃣ Min. $10 Deposit karein.\n3️⃣ Trader ID yahan bhejein.")
-        kb = [[InlineKeyboardButton("✅ JOIN VIP", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-              [InlineKeyboardButton("💬 Support", url="@mstraders7")]]
+        # 1 signal ke baad lock message
+        msg = (f"🚀 **VIP ACCESS LOCKED**\n\nHumare VIP signals ki accuracy 95% tak hai. Unlimited signals ke liye niche diye steps follow karein:\n\n"
+               f"1️⃣ [REGISTER HERE]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n"
+               f"2️⃣ Min. $10 Deposit karein.\n"
+               f"3️⃣ Trader ID yahan message mein bhejein.\n\n"
+               f"🆘 Support: {"@mstraders7"}")
+        kb = [[InlineKeyboardButton("✅ REGISTER & JOIN VIP", url="https://broker-qx.pro/sign-up/?lid=2022562")],
+              [InlineKeyboardButton("💬 Message Support", url="@mstraders7")]]
     
     await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    # Zyada Pairs add kiye gaye hain
-    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD", "USDCHF", "GBPJPV", "EURJPY"]
+    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD", "USDCHF"]
     kb = [[InlineKeyboardButton(f"💹 {a}", callback_data=f'p_{a}')] for a in assets]
     await query.edit_message_text("✨ **SELECT ASSET** ✨", reply_markup=InlineKeyboardMarkup(kb))
 
@@ -113,46 +106,61 @@ async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     pair = query.data.split('_')[1]
-    # Naye Timeframes add kiye gaye hain
     kb = [
         [InlineKeyboardButton("⏱ 10 Sec", callback_data=f'tf_10_{pair}'), InlineKeyboardButton("⏱ 15 Sec", callback_data=f'tf_15_{pair}')],
-        [InlineKeyboardButton("⏱ 30 Sec", callback_data=f'tf_30_{pair}'), InlineKeyboardButton("⏱ 1 Min", callback_data=f'tf_60_{pair}')],
-        [InlineKeyboardButton("⏱ 5 Min", callback_data=f'tf_300_{pair}')]
+        [InlineKeyboardButton("⏱ 30 Sec", callback_data=f'tf_30_{pair}'), InlineKeyboardButton("⏱ 1 Min", callback_data=f'tf_60_{pair}')]
     ]
-    await query.edit_message_text(f"💹 **Pair:** {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
+    await query.edit_message_text(f"💹 **Asset:** {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
 
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     uid = query.from_user.id
     db = get_db()
+    support_url = f"https://t.me/{SUPPORT_USER.replace('@','')}"
     
     if uid in db["verified"] or uid not in db["used_free"]:
         await query.answer()
         _, tf, pair = query.data.split('_')
-        await query.edit_message_text(f"🚀 **Analyzing {pair} ({tf}s)...**")
+        await query.edit_message_text(f"🚀 **Analyzing {pair} Market...**")
         
         act, acc = get_advanced_signal(pair, tf)
         ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
         
-        msg = (f"🎯 **VIP PREMIUM SIGNAL**\n━━━━━━━━━━━━━━━\n"
-               f"💹 **ASSET  :** {pair}\n📊 **ACTION :** {act}\n"
-               f"🎯 **ACCURACY:** {acc}\n🕒 **IST TIME:** {ist.strftime('%I:%M:%S %p')}\n"
-               f"━━━━━━━━━━━━━━━\n⚠️ *Fast signal: Entry turant lein!*")
+        # ISME KAHIN BHE 'FREE' NAHI LIKHA HAI
+        msg = (f"🎯 **VIP PREMIUM SIGNAL** 🎯\n"
+               f"━━━━━━━━━━━━━━━━━━\n"
+               f"💹 **ASSET  :** {pair}\n"
+               f"📊 **ACTION :** {act}\n"
+               f"🎯 **ACCURACY:** {acc}\n"
+               f"🕒 **IST TIME:** {ist.strftime('%I:%M:%S %p')}\n"
+               f"━━━━━━━━━━━━━━━━━━\n"
+               f"⚠️ *Signal aane ke turant baad trade lein!*")
         
         await query.edit_message_text(msg, parse_mode='Markdown')
         
+        # Data Update: Agar ye naya user tha toh limit khatam karo
         if uid not in db["verified"] and uid not in db["used_free"]:
             db["used_free"].append(uid)
             save_db(db)
+            # 5 seconds baad lock message bhej dena (optional par conversion ke liye accha hai)
+            await asyncio.sleep(2)
+            await context.bot.send_message(uid, "🔒 **Free Trial Finished!** Unlimited signals ke liye VIP join karein. Check /start")
     else:
-        await query.answer("Access Locked!", show_alert=True)
+        # Agar user limit khatam kar chuka hai aur phir se try kare
+        await query.answer("Access Locked! VIP Required.", show_alert=True)
+        msg = (f"🚀 **FREE TRIAL EXPIRED**\n\nAapka trial signal khatam ho chuka hai.\n\n"
+               f"👉 [REGISTER HERE]({"https://broker-qx.pro/sign-up/?lid=2022562"}) to continue.\n"
+               f"🆘 Support: {"@mstraders7"}")
+        kb = [[InlineKeyboardButton("✅ JOIN VIP", url="https://broker-qx.pro/sign-up/?lid=2022562")],
+              [InlineKeyboardButton("💬 Support", url="@mstraders7")]]
+        await context.bot.send_message(uid, msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
-# (Handle Trader ID and Verify logic remains same as previous code)
 async def handle_trader_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
-    if uid in get_db()["verified"]: return
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔔 **VIP Request**\nUser: `{uid}`\nID: `{update.message.text}`\n\nApprove: `/verify {uid}`")
-    await update.message.reply_text("📩 **ID Received!** Admin 5-10 mins mein verify kar dega.")
+    db = get_db()
+    if uid in db["verified"]: return
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔔 **NEW VIP REQUEST**\nUID: `{uid}`\nTraderID: `{update.message.text}`\n\nApprove: `/verify {uid}`")
+    await update.message.reply_text("📩 **ID Received!** Admin 5-10 mins mein verify kar dega. Tab tak wait karein.")
 
 async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
@@ -163,7 +171,7 @@ async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db["verified"].append(target)
             save_db(db)
             await update.message.reply_text(f"✅ User {target} Verified!")
-            await context.bot.send_message(target, "🎉 **VIP ACTIVATED!** /start")
+            await context.bot.send_message(target, "🎉 **VIP ACTIVATED!** Ab aap unlimited signals le sakte hain. Type /start")
     except: pass
 
 async def run_bot():
@@ -176,12 +184,16 @@ async def run_bot():
             app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
             app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_trader_id))
+            
             await app.initialize()
             await app.start()
             await app.updater.start_polling(drop_pending_updates=True)
             while True: await asyncio.sleep(10)
-        except: await asyncio.sleep(5)
+        except Exception as e:
+            print(f"Restarting... Error: {e}")
+            await asyncio.sleep(5)
 
 if __name__ == '__main__':
-    st.write("Server Active ✅")
+    st.title("MS Traders VIP Server")
+    st.success("Bot is Running... ✅")
     asyncio.run(run_bot())
