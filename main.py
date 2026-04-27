@@ -19,10 +19,12 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 # ==========================================
 # ⚙️ CONFIGURATION
 # ==========================================
-BOT_TOKEN = "8734653401:AAGWuJrAEV7YTUldr45reN-imN6WtSUnuxE"
+BOT_TOKEN = "8734653401:AAFnkFQbZ0CZRrshGCuUuxUbc4OU3HWVaCM"
 ADMIN_ID = 7852639173
 SUPPORT_USER = "@mstraders7"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
+IQ_USER = "atylishmax1407@gmail.com"
+IQ_PASS = "max1407@"
 IST = pytz.timezone('Asia/Kolkata')
 MONGO_URI = "mongodb+srv://atylishmax1407_db_user:L6T5cl4gztJIaRRs@cluster0.rxd940g.mongodb.net/?appName=Cluster0"
 
@@ -42,78 +44,121 @@ def save_db(data):
     db_col.replace_one({"_id": "bot_storage"}, data, upsert=True)
 
 # ==========================================
+# 📊 SIGNAL LOGIC (ORIGINAL)
+# ==========================================
+def get_signal_logic(pair, tf):
+    try:
+        api = IQ_Option(IQ_USER, IQ_PASS)
+        if not api.connect():
+            return "CONN ERROR ⚠️", "N/A", "N/A"
+        
+        candles = api.get_candles(pair, int(tf), 60, time.time())
+        df = pd.DataFrame(candles)
+        
+        df['ema'] = df['close'].rolling(window=12).mean()
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        df['rsi'] = 100 - (100 / (1 + (gain / loss)))
+        
+        last = df.iloc[-1]
+        entry_time = datetime.now(IST).strftime('%I:%M:%S %p')
+        
+        if last['rsi'] < 30: return "CALL (BUY) ⬆️", "97%", entry_time
+        elif last['rsi'] > 70: return "PUT (SELL) ⬇️", "97%", entry_time
+        else:
+            direction = "CALL ⬆️" if last['close'] > last['ema'] else "PUT ⬇️"
+            return direction, "92%", entry_time
+    except:
+        return "ERROR ⚠️", "N/A", "N/A"
+
+# ==========================================
 # 🤖 BOT HANDLERS
 # ==========================================
 
-# 1. Start Command Logic
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     db = get_db()
     
     if uid in db["verified"]:
-        msg = "✅ VIP ACCESS ACTIVE\nUnlimited premium signals are ready!"
-        kb = [[InlineKeyboardButton("📊 Get VIP Signal", callback_data='list_assets')]]
+        msg = "✅ **VIP ACCESS ACTIVE**\nUnlimited signals are ready!"
+        kb = [[InlineKeyboardButton("📊 Get Signal", callback_data='list_assets')]]
     elif uid not in db["used_free"]:
-        msg = "🎁 WELCOME**\nAapko 1 FREE VIP Signal** diya gaya hai.\n\nNiche button par click karke signal lein."
-        kb = [[InlineKeyboardButton("⚡ Get Free Signal", callback_data='list_assets')]]
+        msg = "🎁 **FREE TRIAL**\nAapko **1 FREE VIP Signal** diya gaya hai."
+        kb = [[InlineKeyboardButton("⚡ Get Signal", callback_data='list_assets')]]
     else:
-        # Register Message Logic
-        msg = (f"🚀 VIP ACCESS LOCKED\n\nUnlimited signals ke liye niche steps follow karein:\n\n"
-               f"1️⃣ Is link se register karein: [CLICK HERE]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n"
-               f"2️⃣ Minimum $30 deposit karein.\n"
-               f"3️⃣ Apni **Trader ID** yahan niche message mein bhejein.\n\n"
-               f"Admin verify karke aapka VIP access chalu kar dega.")
-        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-              [InlineKeyboardButton("📞 Contact Support", url=f"https://t.me/{"@mstraders7"[1:]}")]]
+        msg = (f"🚀 **VIP ACCESS LOCKED**\n\nUnlimited signals ke liye steps:\n\n"
+               f"1️⃣ [REGISTER HERE]({REG_LINK})\n"
+               f"2️⃣ Deposit $10\n"
+               f"3️⃣ Send Trader ID here.")
+        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url=REG_LINK)]]
     
-    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
+    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
-# 2. Trader ID Handling (Admin Notification)
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
-    text = update.message.text
-    db = get_db()
-
-    if uid in db["verified"]:
-        await update.message.reply_text("Aapka VIP access pehle se active hai! 📊")
-        return
-
-    # Send Trader ID to Admin
-    admin_msg = (f"🔔 **NEW VIP REQUEST**\n\n"
-                 f"👤 User: {update.effective_user.first_name}\n"
-                 f"🆔 Telegram UID: `{uid}`\n"
-                 f"📝 Trader ID: `{text}`\n\n"
-                 f"Approve karne ke liye click karein:\n`/verify {uid}`")
-    
-    await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, parse_mode='Markdown')
-    await update.message.reply_text("📩 Trader ID received!\nAdmin verify kar raha hai, thoda intezar karein.")
-
-# 3. Admin Verify Command
-async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID: return
-    
-    try:
-        target_id = int(context.args[0])
-        db = get_db()
-        if target_id not in db["verified"]:
-            db["verified"].append(target_id)
-            save_db(db)
-            await update.message.reply_text(f"✅ User `{target_id}` verified successfully!")
-            await context.bot.send_message(chat_id=target_id, text="🎉 CONGRATULATIONS!\nAapka VIP access active ho gaya hai. Ab aap unlimited signals le sakte hain! /start")
-    except:
-        await update.message.reply_text("❌ Format: `/verify [UID]`")
-
-# ==========================================
-# 🔄 ASSET & SIGNAL LOGIC (SAME AS BEFORE)
-# ==========================================
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    assets = ["EURUSD", "GBPUSD", "USDJPY", "EURJPY"]
-    kb = [[InlineKeyboardButton(f"💹 {a}", callback_data=f'p_{a}')] for a in assets]
+    # Pairs Fix
+    assets = ["EURUSD", "GBPUSD", "USDJPY", "EURJPY", "AUDUSD", "GBPJPY", "USDCAD"]
+    kb = []
+    for i in range(0, len(assets), 2):
+        row = [InlineKeyboardButton(f"💹 {assets[i]}", callback_data=f'p_{assets[i]}')]
+        if i+1 < len(assets):
+            row.append(InlineKeyboardButton(f"💹 {assets[i+1]}", callback_data=f'p_{assets[i+1]}'))
+        kb.append(row)
     await query.edit_message_text("✨ **SELECT ASSET** ✨", reply_markup=InlineKeyboardMarkup(kb))
 
-# ... (Include handle_timeframe and send_signal from previous code)
+async def handle_timeframe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    pair = query.data.split('_')[1]
+    kb = [[InlineKeyboardButton("⏱ 1m", callback_data=f'tf_60_{pair}'), 
+           InlineKeyboardButton("⏱ 5m", callback_data=f'tf_300_{pair}')]]
+    await query.edit_message_text(f"💹 Asset: **{pair}**\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
+
+async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    uid = query.from_user.id
+    db = get_db()
+    
+    if uid in db["verified"] or uid not in db["used_free"]:
+        await query.answer()
+        _, tf, pair = query.data.split('_')
+        await query.edit_message_text(f"🚀 **Analyzing {pair}...**")
+        
+        act, acc, tm = get_signal_logic(pair, tf)
+        
+        msg = (f"🎯 **VIP SIGNAL**\n"
+               f"━━━━━━━━━━━━━━━\n"
+               f"💹 ASSET: **{pair}**\n"
+               f"📊 ACTION: **{act}**\n"
+               f"🎯 ACCURACY: **{acc}**\n"
+               f"🕒 IST: **{tm}**\n"
+               f"━━━━━━━━━━━━━━━")
+        
+        await query.edit_message_text(msg, parse_mode='Markdown')
+        if uid not in db["verified"]:
+            db["used_free"].append(uid)
+            save_db(db)
+    else:
+        await query.answer("Join VIP for more signals!", show_alert=True)
+
+async def handle_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    db = get_db()
+    if uid not in db["verified"]:
+        await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔔 **NEW ID**: `{update.message.text}`\nUID: `{uid}`\nVerify: `/verify {uid}`")
+        await update.message.reply_text("📩 ID sent to Admin for verification!")
+
+async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id == ADMIN_ID:
+        uid = int(context.args[0])
+        db = get_db()
+        if uid not in db["verified"]:
+            db["verified"].append(uid)
+            save_db(db)
+            await update.message.reply_text("✅ User Verified!")
+            await context.bot.send_message(uid, "🎉 VIP Activated! Click /start")
 
 # ==========================================
 # 🔄 ENGINE
@@ -125,19 +170,19 @@ async def run_bot():
             app.add_handler(CommandHandler("start", start))
             app.add_handler(CommandHandler("verify", verify_user))
             app.add_handler(CallbackQueryHandler(list_assets, pattern='^list_assets$'))
-            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+            app.add_handler(CallbackQueryHandler(handle_timeframe, pattern='^p_'))
+            app.add_handler(CallbackQueryHandler(send_signal, pattern='^tf_'))
+            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_id))
             
             await app.initialize()
             await app.start()
             await app.updater.start_polling(drop_pending_updates=True)
             while True: await asyncio.sleep(3600)
-        except:
-            await asyncio.sleep(10)
+        except: await asyncio.sleep(10)
 
 if __name__ == '__main__':
-    st.title("📈 VIP Trading Server")
-    if "running" not in st.session_state:
-        st.session_state.running = True
+    st.title("📈 VIP Server Running")
+    if "started" not in st.session_state:
+        st.session_state.started = True
         import threading
         threading.Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
-    st.success("Bot is Live with Registration Logic! ✅")
