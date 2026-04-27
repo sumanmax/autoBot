@@ -1,11 +1,8 @@
 import collections
+# CRITICAL: IQ Option fix must be at the very top
 if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
-
-# Iske baad baaki imports
-from iqoptionapi.stable_api import IQ_Option
-# ... rest of your code
 
 import os
 import time
@@ -29,7 +26,7 @@ IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 
-# MongoDB Connection String (Permanent Storage)
+# MongoDB Connection String (Jo aapne di thi)
 MONGO_URI = "mongodb+srv://atylishmax1407_db_user:L6T5cl4gztJIaRRs@cluster0.rxd940g.mongodb.net/?appName=Cluster0"
 
 try:
@@ -58,7 +55,7 @@ def save_db(data):
         print(f"DB Save Error: {e}")
 
 # ==========================================
-# 📊 SIGNAL LOGIC (SAME TO SAME)
+# 📊 SIGNAL LOGIC (ORIGINAL & UNTOUCHED)
 # ==========================================
 def get_advanced_signal(pair, tf):
     try:
@@ -95,25 +92,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if uid in db["verified"]:
         msg = "✅ **VIP ACCESS ACTIVE**\nUnlimited premium signals are ready for you!"
         kb = [[InlineKeyboardButton("📊 Get VIP Signal", callback_data='list_assets')],
-              [InlineKeyboardButton("📞 Contact Support", url="@mstraders7")]]
+              [InlineKeyboardButton("📞 Contact Support", url=support_url)]]
     elif uid not in db["used_free"]:
         msg = "🎁 **WELCOME TO PREMIUM SIGNALS**\nAapko **1 PREMIUM VIP Signal** access diya gaya hai accuracy check karne ke liye."
         kb = [[InlineKeyboardButton("⚡ Get Premium Signal", callback_data='list_assets')]]
     else:
         msg = (f"🚀 **VIP ACCESS LOCKED**\n\nUnlimited 95%+ accuracy signals ke liye niche diye steps follow karein:\n\n"
-               f"1️⃣ [REGISTER HERE]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n"
+               f"1️⃣ [REGISTER HERE]({REG_LINK})\n"
                f"2️⃣ Min. $10 Deposit karein.\n"
                f"3️⃣ Trader ID yahan message mein bhejein.\n\n"
-               f"🆘 Support: {"@mstraders7"}")
-        kb = [[InlineKeyboardButton("✅ REGISTER & JOIN VIP", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-              [InlineKeyboardButton("💬 Message Support", url="@mstraders7")]]
+               f"🆘 Support: {SUPPORT_USER}")
+        kb = [[InlineKeyboardButton("✅ REGISTER & JOIN VIP", url=REG_LINK)],
+              [InlineKeyboardButton("💬 Message Support", url=support_url)]]
     
     await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
     assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD", "USDCHF", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD", "NZDUSD"]
     kb = []
     for i in range(0, len(assets), 2):
@@ -121,7 +117,6 @@ async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if i+1 < len(assets):
             row.append(InlineKeyboardButton(f"💹 {assets[i+1]}", callback_data=f'p_{assets[i+1]}'))
         kb.append(row)
-    
     kb.append([InlineKeyboardButton("🔙 Back to Main", callback_data='start_back')])
     await query.edit_message_text("✨ **SELECT TRADING ASSET** ✨", reply_markup=InlineKeyboardMarkup(kb))
 
@@ -129,33 +124,25 @@ async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     pair = query.data.split('_')[1]
-    
-    kb = [
-        [InlineKeyboardButton("⏱ 10 Sec", callback_data=f'tf_10_{pair}'), InlineKeyboardButton("⏱ 15 Sec", callback_data=f'tf_15_{pair}')],
-        [InlineKeyboardButton("⏱ 30 Sec", callback_data=f'tf_30_{pair}'), InlineKeyboardButton("⏱ 1 Min", callback_data=f'tf_60_{pair}')],
-        [InlineKeyboardButton("⏱ 5 Min", callback_data=f'tf_300_{pair}')]
-    ]
+    kb = [[InlineKeyboardButton("⏱ 10 Sec", callback_data=f'tf_10_{pair}'), InlineKeyboardButton("⏱ 15 Sec", callback_data=f'tf_15_{pair}')],
+          [InlineKeyboardButton("⏱ 30 Sec", callback_data=f'tf_30_{pair}'), InlineKeyboardButton("⏱ 1 Min", callback_data=f'tf_60_{pair}')],
+          [InlineKeyboardButton("⏱ 5 Min", callback_data=f'tf_300_{pair}')]]
     await query.edit_message_text(f"💹 **Asset:** {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
 
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     uid = query.from_user.id
     db = get_db()
-    
     if uid in db["verified"] or uid not in db["used_free"]:
         await query.answer()
         _, tf, pair = query.data.split('_')
         await query.edit_message_text(f"🚀 **Analyzing {pair} Market...**")
-        
         act, acc = get_advanced_signal(pair, tf)
         ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
-        
         msg = (f"🎯 **VIP PREMIUM SIGNAL** 🎯\n━━━━━━━━━━━━━━━━━━\n"
                f"💹 ASSET  : {pair}\n📊 **ACTION : {act}\n🎯 ACCURACY: {acc}\n🕒 IST TIME: {ist.strftime('%I:%M:%S %p')}\n"
                f"━━━━━━━━━━━━━━━━━━\n⚠️ *Fast signal: Entry turant lein!*")
-        
         await query.edit_message_text(msg, parse_mode='Markdown')
-        
         if uid not in db["verified"] and uid not in db["used_free"]:
             db["used_free"].append(uid)
             save_db(db)
@@ -223,5 +210,4 @@ if __name__ == '__main__':
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(run_bot())
-        
         threading.Thread(target=start_loop, daemon=True).start()
