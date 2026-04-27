@@ -19,7 +19,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 # ==========================================
 # ⚙️ CONFIGURATION
 # ==========================================
-BOT_TOKEN = "8734653401:AAFnkFQbZ0CZRrshGCuUuxUbc4OU3HWVaCM"
+BOT_TOKEN = "8734653401:AAFsiz0sF3h4Jl0E5GYS_zxZwgwd9O6ZKm4"
 ADMIN_ID = 7852639173
 SUPPORT_USER = "@mstraders7"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
