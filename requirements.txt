@@ -1,6 +1,6 @@
 pymongo
 dnspython
-python-telegram-bot==20.8
+python-telegram-bot
 pandas
-iqoptionapi==7.0.1
+iqoptionapi
 streamlit
