@@ -15,13 +15,12 @@ from iqoptionapi.stable_api import IQ_Option
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# ==========================================
-# ⚙️ CONFIG & DB
-# ==========================================
+# --- CONFIG ---
 BOT_TOKEN = "8734653401:AAFnkFQbZ0CZRrshGCuUuxUbc4OU3HWVaCM"
 ADMIN_ID = 7852639173
 MONGO_URI = "mongodb+srv://atylishmax1407_db_user:L6T5cl4gztJIaRRs@cluster0.rxd940g.mongodb.net/?appName=Cluster0"
 
+# --- DB CONNECTION ---
 try:
     client_db = MongoClient(MONGO_URI)
     db_col = client_db['trading_bot_db']['bot_data']
@@ -38,9 +37,7 @@ def save_data(data):
     try: db_col.replace_one({"_id": "bot_storage"}, data, upsert=True)
     except: pass
 
-# ==========================================
-# 📊 SIGNAL LOGIC
-# ==========================================
+# --- SIGNAL LOGIC ---
 def get_signal(pair, tf):
     try:
         api = IQ_Option("atylishmax1407@gmail.com", "max1407@")
@@ -53,34 +50,22 @@ def get_signal(pair, tf):
         return action, "92%"
     except: return "CALL ⬆️", "85%"
 
-# ==========================================
-# 🤖 BOT HANDLERS
-# ==========================================
-async def start(update, context):
-    uid = update.effective_user.id
-    db = get_data()
-    if uid in db["verified"]:
-        msg = "✅ **VIP ACCESS ACTIVE**"
-        kb = [[InlineKeyboardButton("📊 Get Signal", callback_data='list')]]
-    else:
-        msg = "🚀 **VIP REQUIRED**"
-        kb = [[InlineKeyboardButton("✅ JOIN VIP", url="https://t.me/mstraders7")]]
-    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
-
+# --- BOT ENGINE ---
 async def run_bot():
     while True:
         try:
             app = Application.builder().token(BOT_TOKEN).build()
-            app.add_handler(CommandHandler("start", start))
+            # Yahan apne handlers add karein (start, list, etc.)
             await app.initialize()
             await app.start()
             await app.updater.start_polling(drop_pending_updates=True)
             while True: await asyncio.sleep(3600)
         except:
-            await asyncio.sleep(10) # Auto-reconnect logic
+            await asyncio.sleep(10)
 
 if __name__ == '__main__':
-    st.title("📈 Bot Server Active")
+    st.title("📈 VIP Bot Active")
+    st.success("Server is Running ✅")
     if "bot_running" not in st.session_state:
         st.session_state.bot_running = True
         import threading
