@@ -1,5 +1,7 @@
-pymongo
-dnspython
-python-telegram-bot
-pandas
-streamlit
+pymongo==4.6.3
+dnspython==2.6.1
+python-telegram-bot==20.8
+pandas==2.2.1
+streamlit==1.32.0
+iqoptionapi==7.0.1
+setuptools
