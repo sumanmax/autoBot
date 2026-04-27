@@ -10,74 +10,80 @@ import pandas as pd
 import streamlit as st
 import pytz
 import certifi
+import urllib.parse
 from datetime import datetime
 from pymongo import MongoClient
 from threading import Thread
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # ==========================================
-# ⚙️ CONFIGURATION & SETTINGS
+# ⚙️ CONFIGURATION (Apne details yahan bharein)
 # ==========================================
-BOT_TOKEN = "8734653401:AAEcLYLEVTCtM5EhGODwJanwhMQGYdS6JyU"
+BOT_TOKEN = "8734653401:AAEcLYLEVTCtM5EhGODwJanwhMQGYdS6JyU" 
 ADMIN_ID = 7852639173
 SUPPORT_USER = "@mstraders7"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
 
-# --- MongoDB Setup with SSL Fix ---
-MONGO_URL = "mongodb+srv://atylishmax1407_db_user:max1407cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
+# --- MongoDB Setup with RFC 3986 Fix ---
+db_username = "atylishmax1407_db_user"
+db_password = "max1407@" # Yahan apna password likhein
+safe_password = urllib.parse.quote_plus(db_password)
+MONGO_URL = f"mongodb+srv://{db_username}:{safe_password}@cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
 ca = certifi.where()
 
 try:
     client_db = MongoClient(MONGO_URL, tlsCAFile=ca, serverSelectionTimeoutMS=5000)
     db_mongo = client_db['trading_bot_db']
     collection = db_mongo['users']
-    # Check connection
     client_db.admin.command('ping')
     db_status = "Connected ✅"
 except Exception as e:
     db_status = f"Error ❌ ({e})"
-
-def get_user_status(uid):
-    try:
-        user = collection.find_one({"_id": uid})
-        if not user:
-            return {"is_verified": False, "used_free": False}
-        return user
-    except:
-        return {"is_verified": False, "used_free": False}
-
-def update_db(uid, field, value):
-    try:
-        collection.update_one({"_id": uid}, {"$set": {field: value}}, upsert=True)
-    except:
-        pass
+    collection = None
 
 # ==========================================
-# 🤖 BOT LOGIC (Handlers)
+# 🛠 DATABASE FUNCTIONS
+# ==========================================
+
+def get_user_data(uid):
+    if collection is None: return None
+    return collection.find_one({"_id": uid})
+
+def update_user_trial(uid):
+    if collection is not None:
+        collection.update_one({"_id": uid}, {"$set": {"used_free": True}}, upsert=True)
+
+# ==========================================
+# 🤖 BOT HANDLERS
 # ==========================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
-    status = get_user_status(uid)
+    user = get_user_data(uid)
     
-    if status.get("is_verified"):
-        msg = "👑 **WELCOME TO VIP CHANNEL**\n\nAapka VIP access active hai. Unlimited signals ke liye niche click karein!"
+    # Check if user is VIP or has used trial
+    is_verified = user.get("is_verified", False) if user else False
+    used_free = user.get("used_free", False) if user else False
+
+    if is_verified:
+        msg = "👑 **VIP ACCESS ACTIVE**\n\nUnlimited signals ke liye niche click karein!"
         kb = [[InlineKeyboardButton("📊 GET PREMIUM SIGNAL", callback_data='list_assets')]]
-    elif not status.get("used_free"):
+    elif not used_free:
         msg = ("🎁 **WELCOME TO MS TRADERS**\n\n"
-               "Hamari Accuracy **98%** hai. Aapko milta hai **1 FREE Trial Signal**.\n"
-               "Niche button par click karke pair select karein 👇")
+               "Aapko milta hai **1 High-Accuracy Trial Signal** bilkul free.\n"
+               "Accuracy check karne ke liye niche click karein 👇")
         kb = [[InlineKeyboardButton("⚡ START FREE TRIAL", callback_data='list_assets')]]
     else:
+        # Trial khatam hone ke baad ka attractive message
         msg = (f"🚀 **YOUR FREE TRIAL EXPIRED!**\n\n"
-               f"Accuracy dekh li? Ab real profit ki baari hai! 💰\n\n"
+               f"Aapne accuracy dekh li hai? Ab real profit banane ka waqt hai! 💰\n\n"
                f"💎 **VIP JOINING STEPS:**\n"
-               f"1️⃣ Register on: [CLICK HERE]({REG_LINK})\n"
-               f"2️⃣ Deposit minimum $10.\n"
-               f"3️⃣ Send your **Trader ID** here to verify.\n\n"
+               f"1️⃣ Neeche link se account banayein:\n[REGISTER HERE]({REG_LINK})\n"
+               f"2️⃣ Minimum $10 deposit karein.\n"
+               f"3️⃣ Apni **Trader ID** yahan message karein verification ke liye.\n\n"
                f"🆘 Support: {SUPPORT_USER}")
         kb = [[InlineKeyboardButton("✅ REGISTER NOW", url=REG_LINK)],
               [InlineKeyboardButton("💬 CONTACT ADMIN", url=f"https://t.me/mstraders7")]]
@@ -88,16 +94,9 @@ async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
-    # Famous Assets
-    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD", "EURJPY", "GBPJPY"]
-    kb = []
-    for i in range(0, len(assets), 2):
-        row = [InlineKeyboardButton(f"💹 {assets[i]}", callback_data=f'p_{assets[i]}')]
-        if i+1 < len(assets):
-            row.append(InlineKeyboardButton(f"💹 {assets[i+1]}", callback_data=f'p_{assets[i+1]}'))
-        kb.append(row)
-    
-    await query.edit_message_text("✨ **SELECT TRADING ASSET** ✨\nMarket analyze kiya ja raha hai...", reply_markup=InlineKeyboardMarkup(kb))
+    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD"]
+    kb = [[InlineKeyboardButton(f"💹 {a}", callback_data=f'p_{a}')] for a in assets]
+    await query.edit_message_text("✨ **SELECT PAIR** ✨", reply_markup=InlineKeyboardMarkup(kb))
 
 async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -112,14 +111,17 @@ async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     uid = query.from_user.id
-    status = get_user_status(uid)
+    user = get_user_data(uid)
     
-    if status.get("is_verified") or not status.get("used_free"):
+    is_verified = user.get("is_verified", False) if user else False
+    used_free = user.get("used_free", False) if user else False
+
+    if is_verified or not used_free:
         await query.answer()
         _, tf, pair = query.data.split('_')
-        await query.edit_message_text(f"🚀 **Analyzing {pair}...**\nPlease wait.")
+        await query.edit_message_text(f"🚀 **Analyzing {pair}...**")
         
-        # Signal Generation logic
+        # Signal Generation Logic
         act = "CALL (BUY) ⬆️" if time.time() % 2 == 0 else "PUT (SELL) ⬇️"
         now_ist = datetime.now(IST)
         
@@ -133,12 +135,17 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await query.edit_message_text(msg, parse_mode='Markdown')
         
-        if not status.get("is_verified"):
-            update_db(uid, "used_free", True)
-            await asyncio.sleep(3)
-            await context.bot.send_message(uid, "🛑 **Trial Finished!** VIP join karne ke liye /start karein.")
+        # Agar trial wala user hai toh block karein agle time ke liye
+        if not is_verified:
+            update_user_trial(uid)
+            await asyncio.sleep(5)
+            await context.bot.send_message(uid, "🛑 **Aapka 1 FREE Signal khatam ho chuka hai.**\nUnlimited signals ke liye VIP join karein. Type /start")
     else:
         await query.answer("Trial Expired! Join VIP.", show_alert=True)
+        # Force show registration message
+        # Triggering start handler again
+        update.message = query.message
+        await start(update, context)
 
 # ==========================================
 # 🚀 CORE ENGINE
@@ -160,22 +167,19 @@ async def run_bot():
             await app.updater.start_polling(drop_pending_updates=True)
             while True: await asyncio.sleep(3600)
         except Exception as e:
-            print(f"Bot Error: {e}")
-            await asyncio.sleep(15)
+            print(f"Bot Restarting... Error: {e}")
+            await asyncio.sleep(20)
 
 def start_bot_thread():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(run_bot())
 
-# --- Streamlit Dashboard ---
-st.set_page_config(page_title="MS Traders Bot", page_icon="💹")
-st.title("MS Traders VIP Control Panel")
-st.write(f"**Database Status:** {db_status}")
+# Streamlit UI
+st.title("MS Traders VIP Dashboard")
+st.write(f"Database Status: {db_status}")
 
 if "bot_started" not in st.session_state:
     st.session_state.bot_started = True
     Thread(target=start_bot_thread, daemon=True).start()
-    st.success("Bot is successfully running 24/7! ✅")
-
-st.info("Check Telegram for signals. Timezone set to IST (Asia/Kolkata).")
+    st.success("Bot is Live! ✅")
