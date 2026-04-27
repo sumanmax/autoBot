@@ -27,7 +27,7 @@ REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
 
 # --- MongoDB Setup with SSL Fix ---
-MONGO_URL = "mongodb+srv://atylishmax1407_db_user:max1407@cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
+MONGO_URL = "mongodb+srv://atylishmax1407_db_user:max1407cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
 ca = certifi.where()
 
 try:
