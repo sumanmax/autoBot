@@ -1,9 +1,27 @@
+import sys
+import subprocess
 import collections
-# CRITICAL: IQ Option fix must be at the very top
+
+# ==========================================
+# 🛠️ AUTO-INSTALLER HACK (Isse Error Nahi Aayega)
+# ==========================================
+def install_package(package):
+    try:
+        __import__(package)
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# Force install mandatory libraries
+install_package("iqoptionapi")
+
+# IQ Option collections fix (Must be at the very top)
 if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
 
+# ==========================================
+# ⚙️ NORMAL IMPORTS
+# ==========================================
 import os
 import time
 import asyncio
@@ -11,10 +29,9 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
 from pymongo import MongoClient
-
+from iqoptionapi.stable_api import IQ_Option
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
-from iqoptionapi.stable_api import IQ_Option
 
 # ==========================================
 # ⚙️ CONFIGURATION & MONGODB
@@ -26,7 +43,7 @@ IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 
-# MongoDB Connection String (Jo aapne di thi)
+# MongoDB Connection String
 MONGO_URI = "mongodb+srv://atylishmax1407_db_user:L6T5cl4gztJIaRRs@cluster0.rxd940g.mongodb.net/?appName=Cluster0"
 
 try:
@@ -55,7 +72,7 @@ def save_db(data):
         print(f"DB Save Error: {e}")
 
 # ==========================================
-# 📊 SIGNAL LOGIC (ORIGINAL & UNTOUCHED)
+# 📊 SIGNAL LOGIC
 # ==========================================
 def get_advanced_signal(pair, tf):
     try:
@@ -171,7 +188,7 @@ async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except: pass
 
 # ==========================================
-# 🔄 ENGINE (SAFE AUTO-RECONNECT)
+# 🔄 ENGINE
 # ==========================================
 async def run_bot():
     while True:
@@ -189,7 +206,7 @@ async def run_bot():
             await app.start()
             await app.updater.start_polling(drop_pending_updates=True)
             while True: await asyncio.sleep(3600)
-        except Exception as e:
+        except Exception:
             if app:
                 try: 
                     await app.updater.stop()
@@ -198,7 +215,7 @@ async def run_bot():
             await asyncio.sleep(10)
 
 if __name__ == '__main__':
-    st.set_page_config(page_title="Trading Bot")
+    st.set_page_config(page_title="VIP Trading Bot")
     st.title("📈 VIP Signal Bot Server")
     st.success("Server Running... ✅")
     st.info("Database: MongoDB Permanent Storage Active")
