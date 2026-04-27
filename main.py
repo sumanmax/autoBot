@@ -18,14 +18,14 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 # ==========================================
 # ⚙️ CONFIGURATION
 # ==========================================
-BOT_TOKEN = "8734653401:AAG5Ng8cG3mLbBxxTq-LQQZ6yZdTO8LLIP8"
+BOT_TOKEN = "NAYA_TOKEN_YAHAN_DALEIN" 
 ADMIN_ID = 7852639173
 SUPPORT_USER = "@mstraders7"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
 
 # --- MongoDB Setup (Password check karein) ---
-MONGO_URL = "mongodb+srv://atylishmax1407_db_user:<db_password>@cluster0.rxd940g.mongodb.net/?appName=Cluster0"
+MONGO_URL = "mongodb+srv://atylishmax1407_db_user:password@cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
 
 try:
     client_db = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
