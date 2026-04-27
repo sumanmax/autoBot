@@ -1,7 +1,5 @@
 streamlit
 pandas
-python-telegram-bot==20.8
+python-telegram-bot
 pytz
-pymongo
-dnspython
-iqoptionapi @ git+https://github.com/Lu-Yi-Hsun/iqoptionapi.git
+git+https://github.com/Lu-Yi-Hsun/iqoptionapi.git
