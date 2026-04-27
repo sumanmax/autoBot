@@ -3,6 +3,10 @@ if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
 
+# Iske baad baaki imports
+from iqoptionapi.stable_api import IQ_Option
+# ... rest of your code
+
 import os
 import time
 import asyncio
