@@ -21,7 +21,7 @@ from iqoptionapi.stable_api import IQ_Option
 # ==========================================
 # ⚙️ CONFIGURATION
 # ==========================================
-BOT_TOKEN = "8734653401:AAFsiz0sF3h4Jl0E5GYS_zxZwgwd9O6ZKm4"
+BOT_TOKEN = "8734653401:AAG5Ng8cG3mLbBxxTq-LQQZ6yZdTO8LLIP8"
 ADMIN_ID = 7852639173
 SUPPORT_USER = "@mstraders7"
 IQ_USER = "atylishmax1407@gmail.com"
