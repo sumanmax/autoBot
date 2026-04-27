@@ -2,5 +2,5 @@ pymongo
 dnspython
 python-telegram-bot
 pandas
-iqoptionapi
 streamlit
+iqoptionapi
