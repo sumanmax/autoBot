@@ -2,5 +2,5 @@ pymongo
 dnspython
 python-telegram-bot==20.8
 pandas
+iqoptionapi==7.0.1
 streamlit
-git+https://github.com/lu-maia/iqoptionapi.git
