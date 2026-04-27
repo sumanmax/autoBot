@@ -5,7 +5,6 @@ if not hasattr(collections, 'Iterable'):
 
 import os
 import time
-import json
 import asyncio
 import pandas as pd
 import streamlit as st
@@ -19,14 +18,14 @@ from iqoptionapi.stable_api import IQ_Option
 # ==========================================
 # ⚙️ CONFIGURATION & MONGODB
 # ==========================================
-BOT_TOKEN = "8734653401:AAGWuJrAEV7YTUldr45reN-imN6WtSUnuxE"
+BOT_TOKEN = "8734653401:AAFnkFQbZ0CZRrshGCuUuxUbc4OU3HWVaCM"
 ADMIN_ID = 7852639173
 SUPPORT_USER = "@mstraders7"
 IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 
-# MongoDB Connection String (Updated with your credentials)
+# MongoDB Connection String (Permanent Storage)
 MONGO_URI = "mongodb+srv://atylishmax1407_db_user:L6T5cl4gztJIaRRs@cluster0.rxd940g.mongodb.net/?appName=Cluster0"
 
 try:
@@ -36,20 +35,26 @@ try:
 except Exception as e:
     st.error(f"MongoDB Connection Error: {e}")
 
-# --- New Database Logic (MongoDB) ---
+# --- Database Logic (MongoDB) ---
 def get_db():
-    data = users_col.find_one({"_id": "bot_storage"})
-    if not data:
-        initial_data = {"_id": "bot_storage", "verified": [], "used_free": []}
-        users_col.insert_one(initial_data)
-        return initial_data
-    return data
+    try:
+        data = users_col.find_one({"_id": "bot_storage"})
+        if not data:
+            initial_data = {"_id": "bot_storage", "verified": [], "used_free": []}
+            users_col.insert_one(initial_data)
+            return initial_data
+        return data
+    except:
+        return {"verified": [], "used_free": []}
 
 def save_db(data):
-    users_col.replace_one({"_id": "bot_storage"}, data)
+    try:
+        users_col.replace_one({"_id": "bot_storage"}, data)
+    except Exception as e:
+        print(f"DB Save Error: {e}")
 
 # ==========================================
-# 📊 YOUR SIGNAL LOGIC (ORIGINAL - NO CHANGES)
+# 📊 SIGNAL LOGIC (SAME TO SAME)
 # ==========================================
 def get_advanced_signal(pair, tf):
     try:
@@ -57,11 +62,9 @@ def get_advanced_signal(pair, tf):
         if not client.connect(): return "ERROR ⚠️", "N/A"
         
         candle_size = int(tf)
-        # Fast accuracy ke liye 60 candles analyze kar rahe hain
         candles = client.get_candles(pair, candle_size, 60, time.time())
         df = pd.DataFrame(candles)
         
-        # EMA + RSI + BB Strategy
         df['ema'] = df['close'].rolling(window=12).mean()
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
@@ -86,16 +89,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     support_url = f"https://t.me/{SUPPORT_USER.replace('@','')}"
     
     if uid in db["verified"]:
-        msg = "✅ VIP ACCESS ACTIVE\nUnlimited premium signals are ready for you!"
+        msg = "✅ **VIP ACCESS ACTIVE**\nUnlimited premium signals are ready for you!"
         kb = [[InlineKeyboardButton("📊 Get VIP Signal", callback_data='list_assets')],
-              [InlineKeyboardButton("📞 Contact Support", url=support_url)]]
+              [InlineKeyboardButton("📞 Contact Support", url="@mstraders7")]]
     elif uid not in db["used_free"]:
         msg = "🎁 **WELCOME TO PREMIUM SIGNALS**\nAapko **1 PREMIUM VIP Signal** access diya gaya hai accuracy check karne ke liye."
         kb = [[InlineKeyboardButton("⚡ Get Premium Signal", callback_data='list_assets')]]
     else:
-        msg = (f"🚀 VIP ACCESS LOCKED\n\nUnlimited 95%+ accuracy signals ke liye niche diye steps follow karein:\n\n"
+        msg = (f"🚀 **VIP ACCESS LOCKED**\n\nUnlimited 95%+ accuracy signals ke liye niche diye steps follow karein:\n\n"
                f"1️⃣ [REGISTER HERE]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n"
-               f"2️⃣ Min. $30 Deposit karein.\n"
+               f"2️⃣ Min. $10 Deposit karein.\n"
                f"3️⃣ Trader ID yahan message mein bhejein.\n\n"
                f"🆘 Support: {"@mstraders7"}")
         kb = [[InlineKeyboardButton("✅ REGISTER & JOIN VIP", url="https://broker-qx.pro/sign-up/?lid=2022562")],
@@ -107,12 +110,7 @@ async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
-    assets = [
-        "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", 
-        "EURGBP", "USDCAD", "USDCHF", "EURJPY",
-        "GBPJPY", "AUDJPY", "EURAUD", "NZDUSD"
-    ]
-    
+    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD", "USDCHF", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD", "NZDUSD"]
     kb = []
     for i in range(0, len(assets), 2):
         row = [InlineKeyboardButton(f"💹 {assets[i]}", callback_data=f'p_{assets[i]}')]
@@ -121,7 +119,7 @@ async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kb.append(row)
     
     kb.append([InlineKeyboardButton("🔙 Back to Main", callback_data='start_back')])
-    await query.edit_message_text("✨ SELECT TRADING ASSET ✨", reply_markup=InlineKeyboardMarkup(kb))
+    await query.edit_message_text("✨ **SELECT TRADING ASSET** ✨", reply_markup=InlineKeyboardMarkup(kb))
 
 async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -146,17 +144,11 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"🚀 **Analyzing {pair} Market...**")
         
         act, acc = get_advanced_signal(pair, tf)
-        # IST Time Setting
         ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
         
-        msg = (f"🎯 **VIP PREMIUM SIGNAL** 🎯\n"
-               f"━━━━━━━━━━━━━━━━━━\n"
-               f"💹 **ASSET  :** {pair}\n"
-               f"📊 **ACTION :** {act}\n"
-               f"🎯 **ACCURACY:** {acc}\n"
-               f"🕒 **IST TIME:** {ist.strftime('%I:%M:%S %p')}\n"
-               f"━━━━━━━━━━━━━━━━━━\n"
-               f"⚠️ *Fast signal: Entry turant lein!*")
+        msg = (f"🎯 **VIP PREMIUM SIGNAL** 🎯\n━━━━━━━━━━━━━━━━━━\n"
+               f"💹 ASSET  : {pair}\n📊 **ACTION : {act}\n🎯 ACCURACY: {acc}\n🕒 IST TIME: {ist.strftime('%I:%M:%S %p')}\n"
+               f"━━━━━━━━━━━━━━━━━━\n⚠️ *Fast signal: Entry turant lein!*")
         
         await query.edit_message_text(msg, parse_mode='Markdown')
         
@@ -164,22 +156,16 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db["used_free"].append(uid)
             save_db(db)
             await asyncio.sleep(2)
-            await context.bot.send_message(uid, "🔒 **Free Trial Finished!** Unlimited signals ke liye VIP join karein. Check /start")
+            await context.bot.send_message(uid, "🔒 Free Trial Finished! VIP join karein unlimited signals ke liye.")
     else:
         await query.answer("Access Locked! VIP Required.", show_alert=True)
-        msg = (f"🚀 FREE TRIAL EXPIRED\n\nAapka trial signal khatam ho chuka hai. Unlimited signals ke liye:\n\n"
-               f"👉 [REGISTER HERE]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n"
-               f"🆘 Support: {"@mstraders7"}")
-        kb = [[InlineKeyboardButton("✅ JOIN VIP", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-              [InlineKeyboardButton("💬 Support", url=f"https://t.me/{SUPPORT_USER.replace('@','')}")] ]
-        await context.bot.send_message(uid, msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
 async def handle_trader_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     db = get_db()
     if uid in db["verified"]: return
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔔 **VIP Request**\nUID: `{uid}`\nID: `{update.message.text}`\n\nApprove: `/verify {uid}`")
-    await update.message.reply_text("📩 ID Received! Verification pending by Admin.")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔔 VIP Request\nUID: `{uid}`\nID: `{update.message.text}`\n\nApprove: `/verify {uid}`")
+    await update.message.reply_text("📩 ID Received! Admin will verify soon.")
 
 async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
@@ -194,10 +180,11 @@ async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except: pass
 
 # ==========================================
-# 🔄 ENGINE (AUTO RECONNECT & STREAMLIT)
+# 🔄 ENGINE (SAFE AUTO-RECONNECT)
 # ==========================================
 async def run_bot():
     while True:
+        app = None
         try:
             app = Application.builder().token(BOT_TOKEN).build()
             app.add_handler(CommandHandler("start", start))
@@ -206,25 +193,27 @@ async def run_bot():
             app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
             app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_trader_id))
-            
+
             await app.initialize()
             await app.start()
             await app.updater.start_polling(drop_pending_updates=True)
-            
-            while True: 
-                await asyncio.sleep(20) # Keeping it alive
+            while True: await asyncio.sleep(3600)
         except Exception as e:
-            print(f"Connection Lost. Reconnecting... Error: {e}")
-            await asyncio.sleep(5)
+            if app:
+                try: 
+                    await app.updater.stop()
+                    await app.stop()
+                except: pass
+            await asyncio.sleep(10)
 
 if __name__ == '__main__':
-    st.set_page_config(page_title="Bot Server", page_icon="✅")
-    st.write("### 🤖 Bot Server Status: Running...")
-    st.info("Database: MongoDB Cloud (Permanent Storage Active)")
-    
-    # Background thread to keep bot running 24/7 on Streamlit
-    if "bot_running" not in st.session_state:
-        st.session_state.bot_running = True
+    st.set_page_config(page_title="Trading Bot")
+    st.title("📈 VIP Signal Bot Server")
+    st.success("Server Running... ✅")
+    st.info("Database: MongoDB Permanent Storage Active")
+
+    if "bot_started" not in st.session_state:
+        st.session_state.bot_started = True
         import threading
         def start_loop():
             loop = asyncio.new_event_loop()
