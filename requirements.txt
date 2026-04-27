@@ -3,4 +3,3 @@ dnspython
 python-telegram-bot
 pandas
 streamlit
-iqoptionapi==7.0.1
