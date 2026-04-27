@@ -2,4 +2,6 @@ streamlit
 pandas
 python-telegram-bot
 pytz
+pymongo
+dnspython
 git+https://github.com/Lu-Yi-Hsun/iqoptionapi.git
