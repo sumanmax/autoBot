@@ -19,7 +19,7 @@ from iqoptionapi.stable_api import IQ_Option
 # ==========================================
 # ⚙️ CONFIGURATION & MONGODB
 # ==========================================
-BOT_TOKEN = "8734653401:AAFnkFQbZ0CZRrshGCuUuxUbc4OU3HWVaCM"
+BOT_TOKEN = "8734653401:AAGWuJrAEV7YTUldr45reN-imN6WtSUnuxE"
 ADMIN_ID = 7852639173
 SUPPORT_USER = "@mstraders7"
 IQ_USER = "atylishmax1407@gmail.com"
