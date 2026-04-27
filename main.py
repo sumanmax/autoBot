@@ -1,27 +1,9 @@
-import sys
-import subprocess
 import collections
-
-# ==========================================
-# 🛠️ AUTO-INSTALLER HACK (SABSE UPAR)
-# ==========================================
-def install_and_import(package):
-    try:
-        __import__(package)
-    except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-# Force install iqoptionapi before anything else
-install_and_import("iqoptionapi")
-
-# Compatibility fix for iqoptionapi
+# IQ Option fix: Must stay at the very top
 if not hasattr(collections, 'Iterable'):
     import collections.abc
     collections.Iterable = collections.abc.Iterable
 
-# ==========================================
-# ⚙️ NORMAL IMPORTS
-# ==========================================
 import os
 import time
 import asyncio
@@ -29,12 +11,14 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
 from pymongo import MongoClient
-from iqoptionapi.stable_api import IQ_Option
+
+# Standard Library Imports
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from iqoptionapi.stable_api import IQ_Option
 
 # ==========================================
-# ⚙️ CONFIGURATION
+# ⚙️ CONFIGURATION & DATABASE
 # ==========================================
 BOT_TOKEN = "8734653401:AAFnkFQbZ0CZRrshGCuUuxUbc4OU3HWVaCM"
 ADMIN_ID = 7852639173
@@ -43,7 +27,6 @@ IQ_USER = "atylishmax1407@gmail.com"
 IQ_PASS = "max1407@"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 
-# MongoDB Permanent Connection
 MONGO_URI = "mongodb+srv://atylishmax1407_db_user:L6T5cl4gztJIaRRs@cluster0.rxd940g.mongodb.net/?appName=Cluster0"
 
 try:
@@ -51,9 +34,8 @@ try:
     mongo_db = client_db['trading_bot_db']
     users_col = mongo_db['bot_data']
 except Exception as e:
-    st.error(f"MongoDB Error: {e}")
+    st.error(f"MongoDB Connection Error: {e}")
 
-# --- Database Logic (MongoDB) ---
 def get_db():
     try:
         data = users_col.find_one({"_id": "bot_storage"})
@@ -68,11 +50,11 @@ def get_db():
 def save_db(data):
     try:
         users_col.replace_one({"_id": "bot_storage"}, data)
-    except Exception as e:
-        print(f"DB Save Error: {e}")
+    except:
+        pass
 
 # ==========================================
-# 📊 SIGNAL LOGIC
+# 📊 SIGNAL LOGIC (ORIGINAL IST TIME)
 # ==========================================
 def get_advanced_signal(pair, tf):
     try:
@@ -83,6 +65,7 @@ def get_advanced_signal(pair, tf):
         candles = client.get_candles(pair, candle_size, 60, time.time())
         df = pd.DataFrame(candles)
         
+        # Original Indicators
         df['ema'] = df['close'].rolling(window=12).mean()
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
@@ -99,7 +82,7 @@ def get_advanced_signal(pair, tf):
     except: return "CALL ⬆️", "85%"
 
 # ==========================================
-# 🤖 BOT HANDLERS
+# 🤖 BOT COMMANDS & HANDLERS
 # ==========================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
@@ -107,39 +90,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     support_url = f"https://t.me/{SUPPORT_USER.replace('@','')}"
     
     if uid in db["verified"]:
-        msg = "✅ **VIP ACCESS ACTIVE**\nSignals are ready for you!"
+        msg = "✅ **VIP ACCESS ACTIVE**\nUnlimited premium signals are ready!"
         kb = [[InlineKeyboardButton("📊 Get VIP Signal", callback_data='list_assets')],
-              [InlineKeyboardButton("📞 Support", url=support_url)]]
+              [InlineKeyboardButton("📞 Contact Support", url=support_url)]]
     elif uid not in db["used_free"]:
-        msg = "🎁 **FREE TRIAL**\nAapko **1 Signal** mil raha hai accuracy check karne ke liye."
+        msg = "🎁 **WELCOME**\nAapko **1 FREE VIP Signal** diya gaya hai."
         kb = [[InlineKeyboardButton("⚡ Get Signal", callback_data='list_assets')]]
     else:
-        msg = f"🚀 **VIP ACCESS REQUIRED**\n\n1️⃣ [REGISTER]({REG_LINK})\n2️⃣ Send ID here.\n\n🆘 Support: {SUPPORT_USER}"
-        kb = [[InlineKeyboardButton("✅ JOIN VIP", url=REG_LINK)],
-              [InlineKeyboardButton("💬 Message Support", url=support_url)]]
+        msg = (f"🚀 **VIP ACCESS LOCKED**\n\nUnlimited signals ke liye niche steps follow karein:\n\n"
+               f"1️⃣ [REGISTER]({REG_LINK})\n2️⃣ $10 Deposit karein.\n3️⃣ Trader ID yahan message karein.")
+        kb = [[InlineKeyboardButton("✅ JOIN VIP", url=REG_LINK)]]
     
-    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
+    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD", "USDCHF", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD", "NZDUSD"]
+    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD", "EURJPY", "GBPJPY"]
     kb = []
     for i in range(0, len(assets), 2):
         row = [InlineKeyboardButton(f"💹 {assets[i]}", callback_data=f'p_{assets[i]}')]
         if i+1 < len(assets):
             row.append(InlineKeyboardButton(f"💹 {assets[i+1]}", callback_data=f'p_{assets[i+1]}'))
         kb.append(row)
-    kb.append([InlineKeyboardButton("🔙 Back", callback_data='start_back')])
     await query.edit_message_text("✨ **SELECT ASSET** ✨", reply_markup=InlineKeyboardMarkup(kb))
 
 async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     pair = query.data.split('_')[1]
-    kb = [[InlineKeyboardButton("⏱ 10s", callback_data=f'tf_10_{pair}'), InlineKeyboardButton("⏱ 15s", callback_data=f'tf_15_{pair}')],
-          [InlineKeyboardButton("⏱ 1m", callback_data=f'tf_60_{pair}'), InlineKeyboardButton("⏱ 5m", callback_data=f'tf_300_{pair}')]]
-    await query.edit_message_text(f"💹 **Asset:** {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
+    kb = [[InlineKeyboardButton("⏱ 1m", callback_data=f'tf_60_{pair}'), InlineKeyboardButton("⏱ 5m", callback_data=f'tf_300_{pair}')]]
+    await query.edit_message_text(f"💹 **{pair}**\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
 
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -151,14 +132,15 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"🚀 **Analyzing {pair}...**")
         act, acc = get_advanced_signal(pair, tf)
         ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
-        msg = (f"🎯 **VIP SIGNAL** 🎯\n"
-               f"💹 ASSET: {pair}\n📊 ACTION: {act}\n🎯 ACCURACY: {acc}\n🕒 IST: {ist.strftime('%I:%M:%S %p')}\n")
+        msg = (f"🎯 **VIP SIGNAL** 🎯\n━━━━━━━━━━━━\n"
+               f"💹 ASSET: {pair}\n📊 ACTION: {act}\n🎯 ACCURACY: {acc}\n🕒 IST: {ist.strftime('%I:%M:%S %p')}\n"
+               f"━━━━━━━━━━━━\n⚠️ *Fast Entry Required!*")
         await query.edit_message_text(msg, parse_mode='Markdown')
         if uid not in db["verified"] and uid not in db["used_free"]:
             db["used_free"].append(uid)
             save_db(db)
     else:
-        await query.answer("Trial Finished! VIP Required.", show_alert=True)
+        await query.answer("VIP Required!", show_alert=True)
 
 async def handle_trader_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
@@ -179,7 +161,7 @@ async def verify_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except: pass
 
 # ==========================================
-# 🔄 SERVER ENGINE
+# 🔄 ENGINE (RECONNECT LOGIC)
 # ==========================================
 async def run_bot():
     while True:
@@ -207,8 +189,7 @@ if __name__ == '__main__':
     st.set_page_config(page_title="VIP Trading Server")
     st.title("📈 VIP Signal Bot Server")
     st.success("Server Status: Online ✅")
-    st.info("Database: MongoDB Permanent Active")
-
+    
     if "bot_started" not in st.session_state:
         st.session_state.bot_started = True
         import threading
