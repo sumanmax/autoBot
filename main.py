@@ -6,11 +6,9 @@ if not hasattr(collections, 'Iterable'):
 import os
 import time
 import asyncio
-import pandas as pd
 import streamlit as st
 import pytz
 import certifi
-import urllib.parse
 from datetime import datetime
 from pymongo import MongoClient
 from threading import Thread
@@ -19,7 +17,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # ==========================================
-# ⚙️ CONFIGURATION (Apne details yahan bharein)
+# ⚙️ CONFIGURATION
 # ==========================================
 BOT_TOKEN = "8734653401:AAEcLYLEVTCtM5EhGODwJanwhMQGYdS6JyU" 
 ADMIN_ID = 7852639173
@@ -27,11 +25,8 @@ SUPPORT_USER = "@mstraders7"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
 
-# --- MongoDB Setup with RFC 3986 Fix ---
-db_username = "atylishmax1407_db_user"
-db_password = "max1407@" # Yahan apna password likhein
-safe_password = urllib.parse.quote_plus(db_password)
-MONGO_URL = f"mongodb+srv://{db_username}:{safe_password}@cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
+# --- MongoDB Setup (Updated Password) ---
+MONGO_URL = "mongodb+srv://atylishmax1407_db_user:max14072001@cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
 ca = certifi.where()
 
 try:
@@ -54,6 +49,7 @@ def get_user_data(uid):
 
 def update_user_trial(uid):
     if collection is not None:
+        # User ko mark karna ki trial use ho gaya hai
         collection.update_one({"_id": uid}, {"$set": {"used_free": True}}, upsert=True)
 
 # ==========================================
@@ -64,7 +60,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     user = get_user_data(uid)
     
-    # Check if user is VIP or has used trial
     is_verified = user.get("is_verified", False) if user else False
     used_free = user.get("used_free", False) if user else False
 
@@ -72,28 +67,33 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = "👑 **VIP ACCESS ACTIVE**\n\nUnlimited signals ke liye niche click karein!"
         kb = [[InlineKeyboardButton("📊 GET PREMIUM SIGNAL", callback_data='list_assets')]]
     elif not used_free:
-        msg = ("🎁 **WELCOME TO MS TRADERS**\n\n"
-               "Aapko milta hai **1 High-Accuracy Trial Signal** bilkul free.\n"
-               "Accuracy check karne ke liye niche click karein 👇")
+        msg = (
+            "🎁 **WELCOME TO MS TRADERS**\n\n"
+            "Aapko milta hai **1 High-Accuracy Trial Signal** bilkul free.\n"
+            "Accuracy check karne ke liye niche click karein 👇"
+        )
         kb = [[InlineKeyboardButton("⚡ START FREE TRIAL", callback_data='list_assets')]]
     else:
-        # Trial khatam hone ke baad ka attractive message
-        msg = (f"🚀 **YOUR FREE TRIAL EXPIRED!**\n\n"
-               f"Aapne accuracy dekh li hai? Ab real profit banane ka waqt hai! 💰\n\n"
-               f"💎 **VIP JOINING STEPS:**\n"
-               f"1️⃣ Neeche link se account banayein:\n[REGISTER HERE]("https://broker-qx.pro/sign-up/?lid=2022562"})\n"
-               f"2️⃣ Minimum $30 deposit karein.\n"
-               f"3️⃣ Apni **Trader ID** yahan message karein verification ke liye.\n\n"
-               f"🆘 Support: {"@mstraders7"}")
-        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-              [InlineKeyboardButton("💬 CONTACT ADMIN", url=f"https://t.me/mstraders7")]]
+        # Trial expired message with registration link
+        msg = (
+            f"🚀 **YOUR FREE TRIAL EXPIRED!**\n\n"
+            f"Real profit banane ka waqt aa gaya hai! 💰\n\n"
+            f"💎 **VIP JOINING STEPS:**\n"
+            f"1️⃣ Neeche link se account banayein:\n{REG_LINK}\n\n"
+            f"2️⃣ Minimum $10 deposit karein.\n"
+            f"3️⃣ Apni **Trader ID** Admin ko bhejein.\n\n"
+            f"🆘 Support: {SUPPORT_USER}"
+        )
+        kb = [
+            [InlineKeyboardButton("✅ REGISTER NOW", url=REG_LINK)],
+            [InlineKeyboardButton("💬 CONTACT ADMIN", url="https://t.me/mstraders7")]
+        ]
     
     await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
     assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD"]
     kb = [[InlineKeyboardButton(f"💹 {a}", callback_data=f'p_{a}')] for a in assets]
     await query.edit_message_text("✨ **SELECT PAIR** ✨", reply_markup=InlineKeyboardMarkup(kb))
@@ -102,10 +102,8 @@ async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     pair = query.data.split('_')[1]
-    
     kb = [[InlineKeyboardButton("⏱ 1 Minute", callback_data=f'tf_60_{pair}')],
           [InlineKeyboardButton("⏱ 5 Minutes", callback_data=f'tf_300_{pair}')]]
-    
     await query.edit_message_text(f"💹 **ASSET:** {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
 
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -121,54 +119,48 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _, tf, pair = query.data.split('_')
         await query.edit_message_text(f"🚀 **Analyzing {pair}...**")
         
-        # Signal Generation Logic
-        act = "CALL (BUY) ⬆️" if time.time() % 2 == 0 else "PUT (SELL) ⬇️"
+        # Simple signal logic (Demo)
+        act = "CALL (BUY) ⬆️" if int(time.time()) % 2 == 0 else "PUT (SELL) ⬇️"
         now_ist = datetime.now(IST)
         
-        msg = (f"🎯 **VIP PREMIUM SIGNAL** 🎯\n"
-               f"━━━━━━━━━━━━━━━━━━\n"
-               f"💹 **ASSET  :** {pair}\n"
-               f"📊 **ACTION :** {act}\n"
-               f"🎯 **ACCURACY:** 98% 🔥\n"
-               f"🕒 **TIME IST:** {now_ist.strftime('%I:%M:%S %p')}\n"
-               f"━━━━━━━━━━━━━━━━━━")
-        
+        msg = (
+            f"🎯 **VIP PREMIUM SIGNAL** 🎯\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"💹 **ASSET  :** {pair}\n"
+            f"📊 **ACTION :** {act}\n"
+            f"🎯 **ACCURACY:** 98% 🔥\n"
+            f"🕒 **TIME IST:** {now_ist.strftime('%I:%M:%S %p')}\n"
+            f"━━━━━━━━━━━━━━━━━━"
+        )
         await query.edit_message_text(msg, parse_mode='Markdown')
         
-        # Agar trial wala user hai toh block karein agle time ke liye
+        # Trial limit logic
         if not is_verified:
             update_user_trial(uid)
-            await asyncio.sleep(5)
-            await context.bot.send_message(uid, "🛑 **Aapka 1 FREE Signal khatam ho chuka hai.**\nUnlimited signals ke liye VIP join karein. Type /start")
+            await asyncio.sleep(2)
+            await context.bot.send_message(uid, "⚠️ Aapka free trial khatam ho gaya hai. Agla signal VIP mein milega!")
     else:
         await query.answer("Trial Expired! Join VIP.", show_alert=True)
-        # Force show registration message
-        # Triggering start handler again
-        update.message = query.message
+        # Redirect to start menu for registration
         await start(update, context)
 
 # ==========================================
-# 🚀 CORE ENGINE
+# 🚀 RUNNER
 # ==========================================
 
 async def run_bot():
+    app = Application.builder().token(BOT_TOKEN).build()
+    await app.initialize()
+    await app.bot.delete_webhook(drop_pending_updates=True)
+    
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(list_assets, pattern='^list_assets$'))
+    app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
+    app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
+    
+    await app.updater.start_polling(drop_pending_updates=True)
     while True:
-        try:
-            app = Application.builder().token(BOT_TOKEN).build()
-            await app.initialize()
-            await app.bot.delete_webhook(drop_pending_updates=True)
-            
-            app.add_handler(CommandHandler("start", start))
-            app.add_handler(CallbackQueryHandler(list_assets, pattern='^list_assets$'))
-            app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
-            app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
-            
-            await app.start()
-            await app.updater.start_polling(drop_pending_updates=True)
-            while True: await asyncio.sleep(3600)
-        except Exception as e:
-            print(f"Bot Restarting... Error: {e}")
-            await asyncio.sleep(20)
+        await asyncio.sleep(3600)
 
 def start_bot_thread():
     loop = asyncio.new_event_loop()
@@ -176,7 +168,7 @@ def start_bot_thread():
     loop.run_until_complete(run_bot())
 
 # Streamlit UI
-st.title("MS Traders VIP Dashboard")
+st.title("MS Traders Control Panel")
 st.write(f"Database Status: {db_status}")
 
 if "bot_started" not in st.session_state:
