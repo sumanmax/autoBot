@@ -25,18 +25,25 @@ SUPPORT_USER = "@mstraders7"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
 
-# --- MongoDB Setup (Updated Password) ---
-MONGO_URL = "mongodb+srv://atylishmax1407_db_user:max14072001@cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
+# --- MongoDB Setup (Updated Password: max14072001) ---
+# Note: Agar abhi bhi error aaye, toh Atlas mein 'Database Access' mein ja kar 
+# user ka password manually 'max14072001' set karke 'Update User' click karein.
+MONGO_URL = "mongodb+srv://atylishmax1407_db_user:max14072001@cluster0.rxd940g.mongodb.net/trading_bot_db?retryWrites=true&w=majority"
+
 ca = certifi.where()
 
 try:
+    # Connect with timeout so it doesn't hang
     client_db = MongoClient(MONGO_URL, tlsCAFile=ca, serverSelectionTimeoutMS=5000)
     db_mongo = client_db['trading_bot_db']
     collection = db_mongo['users']
+    # Test connection
     client_db.admin.command('ping')
     db_status = "Connected ✅"
 except Exception as e:
-    db_status = f"Error ❌ ({e})"
+    # Error message ko handle karne ke liye
+    db_status = f"Auth Error ❌ (Bad Credentials)"
+    print(f"DB Error: {e}")
     collection = None
 
 # ==========================================
@@ -45,12 +52,17 @@ except Exception as e:
 
 def get_user_data(uid):
     if collection is None: return None
-    return collection.find_one({"_id": uid})
+    try:
+        return collection.find_one({"_id": uid})
+    except:
+        return None
 
 def update_user_trial(uid):
     if collection is not None:
-        # User ko mark karna ki trial use ho gaya hai
-        collection.update_one({"_id": uid}, {"$set": {"used_free": True}}, upsert=True)
+        try:
+            collection.update_one({"_id": uid}, {"$set": {"used_free": True}}, upsert=True)
+        except:
+            pass
 
 # ==========================================
 # 🤖 BOT HANDLERS
@@ -74,20 +86,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         kb = [[InlineKeyboardButton("⚡ START FREE TRIAL", callback_data='list_assets')]]
     else:
-        # Trial expired message with registration link
         msg = (
             f"🚀 **YOUR FREE TRIAL EXPIRED!**\n\n"
-            f"Real profit banane ka waqt aa gaya hai! 💰\n\n"
+            f"Accuracy check ho gayi? Ab profit banane ka waqt hai! 💰\n\n"
             f"💎 **VIP JOINING STEPS:**\n"
-            f"1️⃣ Neeche link se account banayein:\n{REG_LINK}\n\n"
-            f"2️⃣ Minimum $10 deposit karein.\n"
-            f"3️⃣ Apni **Trader ID** Admin ko bhejein.\n\n"
+            f"1️⃣ Account banayein: [REGISTER]({REG_LINK})\n"
+            f"2️⃣ $10 deposit karein.\n"
+            f"3️⃣ Apni **Trader ID** bhejein.\n\n"
             f"🆘 Support: {SUPPORT_USER}"
         )
-        kb = [
-            [InlineKeyboardButton("✅ REGISTER NOW", url=REG_LINK)],
-            [InlineKeyboardButton("💬 CONTACT ADMIN", url="https://t.me/mstraders7")]
-        ]
+        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url=REG_LINK)],
+              [InlineKeyboardButton("💬 CONTACT ADMIN", url="https://t.me/mstraders7")]]
     
     await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
 
@@ -134,18 +143,17 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.edit_message_text(msg, parse_mode='Markdown')
         
-        # Trial limit logic
         if not is_verified:
             update_user_trial(uid)
             await asyncio.sleep(2)
-            await context.bot.send_message(uid, "⚠️ Aapka free trial khatam ho gaya hai. Agla signal VIP mein milega!")
+            await context.bot.send_message(uid, "⚠️ Aapka 1 free trial khatam ho chuka hai. VIP join karein!")
     else:
         await query.answer("Trial Expired! Join VIP.", show_alert=True)
-        # Redirect to start menu for registration
-        await start(update, context)
+        # Manually trigger start content
+        await query.message.reply_text("Trial Expired! Type /start to see VIP steps.")
 
 # ==========================================
-# 🚀 RUNNER
+# 🚀 CORE RUNNER
 # ==========================================
 
 async def run_bot():
@@ -159,8 +167,7 @@ async def run_bot():
     app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
     
     await app.updater.start_polling(drop_pending_updates=True)
-    while True:
-        await asyncio.sleep(3600)
+    while True: await asyncio.sleep(3600)
 
 def start_bot_thread():
     loop = asyncio.new_event_loop()
@@ -168,10 +175,10 @@ def start_bot_thread():
     loop.run_until_complete(run_bot())
 
 # Streamlit UI
-st.title("MS Traders Control Panel")
+st.title("MS Traders VIP Dashboard")
 st.write(f"Database Status: {db_status}")
 
 if "bot_started" not in st.session_state:
     st.session_state.bot_started = True
     Thread(target=start_bot_thread, daemon=True).start()
-    st.success("Bot is Live! ✅")
+    st.success("Bot is Active! ✅")
