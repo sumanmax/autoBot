@@ -20,7 +20,6 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # ==========================================
 # ⚙️ CONFIGURATION
 # ==========================================
-# IMPORTANT: Make sure this token is 100% correct
 BOT_TOKEN = "8734653401:AAFdyXc0knvgZF7X4klVYA0j4pvKEhaaBzo" 
 ADMIN_ID = 7852639173
 SUPPORT_USER = "@mstraders7"
@@ -39,52 +38,78 @@ def get_db_connection():
         client_db.admin.command('ping')
         return db, "Connected ✅"
     except Exception as e:
-        return None, f"Auth Error ❌ ({e})"
+        return None, f"Database Error ❌"
 
 db_mongo, db_status = get_db_connection()
 collection = db_mongo['users'] if db_mongo is not None else None
 
 # ==========================================
-# 🤖 BOT LOGIC & HANDLERS
+# 🛠 DATABASE HELPERS
+# ==========================================
+
+def get_user(uid):
+    if collection is not None:
+        return collection.find_one({"_id": uid})
+    return None
+
+def set_trial_used(uid):
+    if collection is not None:
+        collection.update_one({"_id": uid}, {"$set": {"used_free": True}}, upsert=True)
+
+# ==========================================
+# 🤖 BOT HANDLERS
 # ==========================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
-    user = collection.find_one({"_id": uid}) if collection else None
+    user = get_user(uid)
     
     is_verified = user.get("is_verified", False) if user else False
     used_free = user.get("used_free", False) if user else False
 
     if is_verified:
-        msg = "👑 **WELCOME VIP MEMBER**\n\nUnlimited signals active hain!"
+        msg = "👑 **WELCOME VIP MEMBER**\n\nAapka unlimited access active hai!"
         kb = [[InlineKeyboardButton("📊 GET PREMIUM SIGNAL", callback_data='list_assets')]]
     elif not used_free:
-        msg = "🎁 **WELCOME**\n\nAapko milta hai **1 FREE Trial Signal**.\nClick niche 👇"
+        msg = (
+            "🎁 **WELCOME TO MS TRADERS**\n\n"
+            "Aapko milta hai **1 High-Accuracy Trial Signal** bilkul free.\n"
+            "Accuracy check karne ke liye niche click karein 👇"
+        )
         kb = [[InlineKeyboardButton("⚡ START FREE TRIAL", callback_data='list_assets')]]
     else:
-        msg = f"🚀 **TRIAL EXPIRED!**\n\nJoin VIP now:\n1️⃣ [Register]({REG_LINK})\n2️⃣ Deposit $10\n3️⃣ Send ID to {SUPPORT_USER}"
-        kb = [[InlineKeyboardButton("✅ REGISTER", url=REG_LINK)]]
+        msg = (
+            f"🚀 **YOUR FREE TRIAL EXPIRED!**\n\n"
+            f"Ab real profit banane ka waqt hai! 💰\n\n"
+            f"💎 **VIP JOINING STEPS:**\n"
+            f"1️⃣ Account banayein: [REGISTER]({REG_LINK})\n"
+            f"2️⃣ Minimum $10 deposit karein.\n"
+            f"3️⃣ Apni **Trader ID** Admin ko bhejein.\n\n"
+            f"🆘 Support: {SUPPORT_USER}"
+        )
+        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url=REG_LINK)],
+              [InlineKeyboardButton("💬 CONTACT ADMIN", url="https://t.me/mstraders7")]]
     
-    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
+    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    assets = ["EURUSD", "GBPUSD", "USDJPY"]
+    assets = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURGBP", "USDCAD"]
     kb = [[InlineKeyboardButton(f"💹 {a}", callback_data=f'p_{a}')] for a in assets]
-    await query.edit_message_text("✨ **SELECT ASSET**", reply_markup=InlineKeyboardMarkup(kb))
+    await query.edit_message_text("✨ **SELECT PAIR** ✨", reply_markup=InlineKeyboardMarkup(kb))
 
 async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     pair = query.data.split('_')[1]
     kb = [[InlineKeyboardButton("⏱ 1 Minute", callback_data=f'tf_{pair}')]]
-    await query.edit_message_text(f"💹 Asset: {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
+    await query.edit_message_text(f"💹 **ASSET:** {pair}\nSelect Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
 
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     uid = query.from_user.id
-    user = collection.find_one({"_id": uid}) if collection else None
+    user = get_user(uid)
     
     is_verified = user.get("is_verified", False) if user else False
     used_free = user.get("used_free", False) if user else False
@@ -92,22 +117,36 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_verified or not used_free:
         await query.answer()
         pair = query.data.split('_')[1]
-        act = "CALL ⬆️" if time.time() % 2 == 0 else "PUT ⬇️"
+        await query.edit_message_text(f"🚀 **Analyzing {pair}...**")
+        await asyncio.sleep(1.5)
         
-        await query.edit_message_text(f"🎯 **SIGNAL**\nAsset: {pair}\nAction: {act}\nTime: {datetime.now(IST).strftime('%I:%M %p')}")
+        act = "CALL (BUY) ⬆️" if int(time.time()) % 2 == 0 else "PUT (SELL) ⬇️"
+        now_ist = datetime.now(IST)
         
-        if not is_verified and collection:
-            collection.update_one({"_id": uid}, {"$set": {"used_free": True}}, upsert=True)
-            await context.bot.send_message(uid, "⚠️ Free trial used! Join VIP for more.")
+        msg = (
+            f"🎯 **VIP PREMIUM SIGNAL** 🎯\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"💹 **ASSET  :** {pair}\n"
+            f"📊 **ACTION :** {act}\n"
+            f"🎯 **ACCURACY:** 98% 🔥\n"
+            f"🕒 **TIME IST:** {now_ist.strftime('%I:%M:%S %p')}\n"
+            f"━━━━━━━━━━━━━━━━━━"
+        )
+        await query.edit_message_text(msg, parse_mode='Markdown')
+        
+        if not is_verified:
+            set_trial_used(uid)
+            await asyncio.sleep(2)
+            await context.bot.send_message(uid, "⚠️ Aapka free trial khatam ho gaya hai. Agla signal VIP mein milega! Type /start")
     else:
-        await query.answer("Trial Expired!", show_alert=True)
+        await query.answer("Trial Expired! Join VIP.", show_alert=True)
+        await query.message.reply_text("⚠️ Trial khatam! VIP steps ke liye /start karein.")
 
 # ==========================================
-# 🚀 BOT RUNNER
+# 🚀 CORE ENGINE (FIXED FOR STREAMLIT)
 # ==========================================
 
 def run_telegram_bot():
-    # Naya event loop create karna thread ke liye
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
@@ -118,17 +157,26 @@ def run_telegram_bot():
     app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
     app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
     
-    print("Bot is polling...")
-    app.run_polling(drop_pending_updates=True, close_loop=False)
+    async def start_logic():
+        await app.initialize()
+        await app.bot.delete_webhook(drop_pending_updates=True)
+        await app.updater.start_polling(drop_pending_updates=True)
+        await app.start()
+        print("Bot is polling successfully...")
+        while True:
+            await asyncio.sleep(3600)
 
-# --- Streamlit UI ---
-st.title("MS Traders VIP Dashboard")
-st.write(f"Database: {db_status}")
+    loop.run_until_complete(start_logic())
 
-# Bot ko ek alag thread mein start karna
-if "bot_thread" not in st.session_state:
-    st.session_state.bot_thread = Thread(target=run_telegram_bot, daemon=True)
-    st.session_state.bot_thread.start()
-    st.success("Bot is Running! ✅ Check Telegram.")
+# --- Streamlit Frontend ---
+st.set_page_config(page_title="MS Traders Bot", layout="centered")
+st.title("MS Traders VIP Control Panel")
+st.write(f"Database Status: {db_status}")
 
-st.info("Agar bot respond nahi kar raha, toh Streamlit mein 'Reboot App' dabayein.")
+if "bot_started" not in st.session_state:
+    st.session_state.bot_started = True
+    thread = Thread(target=run_telegram_bot, daemon=True)
+    thread.start()
+    st.success("Bot is Live! ✅")
+
+st.info("Check your Telegram bot now. If it doesn't respond, click 'Reboot App' in Streamlit settings.")
