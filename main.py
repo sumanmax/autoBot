@@ -81,11 +81,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = (f"🚀 **YOUR FREE TRIAL EXPIRED!**\n\n"
                f"Aapne accuracy dekh li hai? Ab real profit banane ka waqt hai! 💰\n\n"
                f"💎 **VIP JOINING STEPS:**\n"
-               f"1️⃣ Neeche link se account banayein:\n[REGISTER HERE]({REG_LINK})\n"
-               f"2️⃣ Minimum $10 deposit karein.\n"
+               f"1️⃣ Neeche link se account banayein:\n[REGISTER HERE]("https://broker-qx.pro/sign-up/?lid=2022562"})\n"
+               f"2️⃣ Minimum $30 deposit karein.\n"
                f"3️⃣ Apni **Trader ID** yahan message karein verification ke liye.\n\n"
-               f"🆘 Support: {SUPPORT_USER}")
-        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url=REG_LINK)],
+               f"🆘 Support: {"@mstraders7"}")
+        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
               [InlineKeyboardButton("💬 CONTACT ADMIN", url=f"https://t.me/mstraders7")]]
     
     await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
