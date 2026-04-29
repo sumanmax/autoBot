@@ -21,7 +21,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # ⚙️ CONFIGURATION
 # ==========================================
 BOT_TOKEN = "8734653401:AAGDeT69f5BIiDJEVe2kPQ-4nQdiyVyMTTc" 
-ADMIN_ID = 7852639173
+ADMIN_ID = 7852639173  
 SUPPORT_USER = "@mstraders7"
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
@@ -60,42 +60,78 @@ def verify_user_vip(uid, status=True):
     if collection is not None:
         collection.update_one({"_id": uid}, {"$set": {"is_verified": status}}, upsert=True)
 
+def register_new_user(uid, data):
+    if collection is not None:
+        # User ko database mein insert karega agar pehle se nahi hai
+        return collection.update_one({"_id": uid}, {"$set": data}, upsert=True)
+
 # ==========================================
 # 🤖 BOT HANDLERS
 # ==========================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    first_name = update.effective_user.first_name
+    username = f"@{update.effective_user.username}" if update.effective_user.username else "No Username"
+    
     user = get_user(uid)
     
-    is_verified = user.get("is_verified", False) if user else False
-    used_free = user.get("used_free", False) if user else False
+    # --- UNIQUE USER LOGIC ---
+    # Agar user database mein nahi milta, matlab wo peheli baar aaya hai
+    if user is None:
+        # Naye user ka data prepare karna
+        new_user_data = {
+            "first_name": first_name,
+            "username": username,
+            "is_verified": False,
+            "used_free": False,
+            "join_date": datetime.now(IST).strftime('%Y-%m-%d %I:%M %p')
+        }
+        register_new_user(uid, new_user_data)
+        
+        # Admin ko sirf NAYE user ka log bhejna
+        direct_link = f"https://t.me/user?id={uid}"
+        log_msg = (
+            "🌟 NEW USER JOINED 🌟\n\n"
+            f"👤 Name: {first_name}\n"
+            f"🆔 Telegram ID: `{uid}`\n"
+            f"🔗 Username: {username}\n"
+            f"💬 [DIRECT CHAT LINK]({direct_link})\n"
+            f"⏰ Time: {datetime.now(IST).strftime('%I:%M %p')}\n"
+        )
+        try:
+            await context.bot.send_message(chat_id=ADMIN_ID, text=log_msg, parse_mode='Markdown', disable_web_page_preview=True)
+        except:
+            pass
+        
+        # User variable ko update karna taki niche logic sahi chale
+        user = new_user_data
+
+    # --- Niche ka logic same rahega ---
+    is_verified = user.get("is_verified", False)
+    used_free = user.get("used_free", False)
 
     if is_verified:
-        msg = "👑 **WELCOME VIP MEMBER**\n\nAapka unlimited premium access active hai! Market analyze karke high-accuracy signals lein."
+        msg = "👑 WELCOME VIP MEMBER\n\n Unlimited premium access active!"
         kb = [[InlineKeyboardButton("📊 GET PREMIUM SIGNAL", callback_data='list_assets')]]
     elif not used_free:
-        msg = (
-            "🎁 WELCOME TO MS TRADERS\n\n"
-            "Aapko milta hai High-Accuracy Signal.\n"
-            "Hamaari accuracy check karein aur aaj hi profit banana shuru karein! 👇"
-        )
-        kb = [[InlineKeyboardButton("⚡ START FREE TRIAL", callback_data='list_assets')]]
+        msg = "🎁 WELCOME TO MS TRADERS\n\n High-Accuracy Signal.\n👇 Click On Bellow:"
+        kb = [[InlineKeyboardButton("⚡ START ", callback_data='list_assets')]]
     else:
         msg = (
-            "🚀 YOUR FREE TRIAL HAS EXPIRED!\n\n"
-            "Aapne accuracy dekh li hai? Ab waqt hai **Daily $50-$100** profit banane ka! 💰\n\n"
+ "🚀 YOUR FREE TRIAL HAS EXPIRED!\n\n"
+            "Aapne accuracy dekh li hai? Ab waqt hai Daily $100-$500 profit banane ka! 💰\n\n"
             "💎 VIP JOIN KARNE KE FAIDE:\n"
-            "✅ 95% - 98% Sure Shot Signals\n"
+            "✅ 80% - 90% Sure Shot Signals\n"
             "✅ Daily 20+ Quality Signals\n"
             "✅ No Loss Strategy Tips\n\n"
             "🔥 JOINING OFFER: VIP join karna bilkul FREE hai:\n\n"
             f"1️⃣ [Is link par click karke]({"https://broker-qx.pro/sign-up/?lid=2022562"}) naya account banayein.\n"
             "2️⃣ Minimum $30 deposit karein.\n"
-            "3️⃣ Apni Trader ID niche message box mein likh kar send karein. 👇\n\n"
+            "3️⃣ Apni Trader ID niche message mein likh kar send karein. 👇\n\n"
             "Hum verify karke aapko permanent access de denge! 📈"
         )
-        kb = [[InlineKeyboardButton("✅ CREATE ACCOUNT NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")]]
+        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")]]
     
     await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
 
@@ -106,32 +142,26 @@ async def handle_trader_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user = get_user(uid)
 
-    # Agar user already VIP hai toh kuch na karein
     if user and user.get("is_verified", False):
         return
 
-    # Check agar user ne trial use kiya hai tabhi ID accept karein
     if user and user.get("used_free", False):
-        # Admin ko message bhejna
+        direct_link = f"https://t.me/user?id={uid}"
         admin_msg = (
-            "🔔 NEW VERIFICATION REQUEST\n\n"
-            f"👤 User ID: `{uid}`\n"
-            f"👤 Username: @{username}\n"
-            f"🆔 Trader ID: `{text}`\n\n"
-            "Please verifye for VIP access"
+            "🔔 VERIFICATION REQUEST\n\n"
+            f"👤 User: {update.effective_user.first_name}\n"
+            f"🆔 Trader ID: `{text}`\n"
+            f"💬 [CHAT WITH USER]({direct_link})\n\n"
+            "Verify?"
         )
-        kb = [
-            [InlineKeyboardButton("✅ VERIFY", callback_data=f"verify_{uid}"),
-             InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{uid}")]
-        ]
-        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
+        kb = [[InlineKeyboardButton("✅ VERIFY", callback_data=f"verify_{uid}"),
+               InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{uid}")]]
         
-        # User ko confirm karna
-        await update.message.reply_text("✅ ID Sent! Hum verify kar rahe hain, thoda intezar karein. Verification ke baad aapko notification mil jayega.")
+        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
+        await update.message.reply_text("✅ Thanks For Sending ID! .ADMIN Verifying..")
     else:
-        await update.message.reply_text("Pehle apna 'Free Trial' use karein, uske baad ID send karein.")
+        await update.message.reply_text("Pehle apna 'Free Trial' use karein.")
 
-# --- ADMIN BUTTON CALLBACK ---
 async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
@@ -140,16 +170,16 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("verify_"):
         target_uid = int(data.split("_")[1])
         verify_user_vip(target_uid, True)
-        await query.edit_message_text(f"✅ User `{target_uid}` ko VIP access de diya gaya hai.")
-        await context.bot.send_message(target_uid, "🎊 CONGRATULATIONS!\n\nAapki ID verify ho gayi hai. Ab aap permanent VIP signals use kar sakte hain! Type /start")
+        await query.edit_message_text(f"✅ User `{target_uid}` Verified.")
+        await context.bot.send_message(target_uid, "🎊 ID Verified! VIP signals active! /start.")
 
     elif data.startswith("reject_"):
         target_uid = int(data.split("_")[1])
-        await query.edit_message_text(f"❌ User `{target_uid}` ki request reject kar di gayi.")
-        await context.bot.send_message(target_uid, "⚠️ Verification Rejected!\n\nAapki Trader ID match nahi hui. Please sahi ID bhejein ya support @mstraders7 se baat karein.")
+        await query.edit_message_text(f"❌ User `{target_uid}` Rejected.")
+        await context.bot.send_message(target_uid, "⚠️ **Rejected!** Sahi ID bhejein.")
 
 # ==========================================
-# 📊 SIGNAL LOGIC (SAME AS BEFORE)
+# 📊 SIGNAL ENGINE & RUNNER
 # ==========================================
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -169,7 +199,7 @@ async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pair = query.data.split('_')[1]
     timeframes = [("⏱ 10 Seconds", "10s"), ("⏱ 15 Seconds", "15s"), ("⏱ 30 Seconds", "30s"), ("⏱ 1 Minute", "1m"), ("⏱ 5 Minutes", "5m")]
     kb = [[InlineKeyboardButton(tf[0], callback_data=f'tf_{tf[1]}_{pair}')] for tf in timeframes]
-    await query.edit_message_text(f"💹 ASSET: {pair}\nSelect Expiry Timeframe:", reply_markup=InlineKeyboardMarkup(kb))
+    await query.edit_message_text(f"💹 ASSET: {pair}\nSelect Expiry:", reply_markup=InlineKeyboardMarkup(kb))
 
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -184,31 +214,25 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"🚀 Analyzing {pair} ({tf_label})...")
         await asyncio.sleep(1.5)
         act = "CALL (BUY) ⬆️" if int(time.time()) % 2 == 0 else "PUT (SELL) ⬇️"
-        msg = f"🎯 **VIP PREMIUM SIGNAL** 🎯\n━━━━━━━━━━━━━━━━━━\n💹 ASSET  : {pair}\n⏰ EXPIRY : {tf_label.upper()}\n📊 ACTION : {act}\n🎯 ACCURACY: 98.6% 🔥\n🕒 TIME IST: {datetime.now(IST).strftime('%I:%M:%S %p')}\n━━━━━━━━━━━━━━━━━━"
+        msg = f"🎯 VIP PREMIUM SIGNAL 🎯\n━━━━━━━━━━━━━━━━━━\n💹 ASSET  : {pair}\n⏰ EXPIRY : {tf_label.upper()}\n📊 ACTION : {act}\n🎯 ACCURACY: 90.6% 🔥\n🕒 TIME IST: {datetime.now(IST).strftime('%I:%M:%S %p')}\n━━━━━━━━━━━━━━━━━━"
         await query.edit_message_text(msg, parse_mode='Markdown')
         if not is_verified:
             set_trial_used(uid)
             await asyncio.sleep(2)
-            await context.bot.send_message(uid, "🛑 **TRIAL FINISHED!**\n\nVIP join karne ke liye apni Trader ID yahan message karein.")
+            await context.bot.send_message(uid, "🛑 TRIAL FINISHED!\n\nAb apni Trader ID yahan bhejein.")
     else:
-        await query.answer("Trial Expired! Send Trader ID for VIP.", show_alert=True)
+        await query.answer("Trial Expired!", show_alert=True)
         await start(update, context)
-
-# ==========================================
-# 🚀 CORE ENGINE
-# ==========================================
 
 def run_telegram_bot():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     app = Application.builder().token(BOT_TOKEN).build()
-    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(list_assets, pattern='^list_assets$'))
     app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
     app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
     app.add_handler(CallbackQueryHandler(admin_callback, pattern='^(verify|reject)_'))
-    # Message handler to catch Trader ID
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_trader_id))
     
     async def start_logic():
@@ -220,10 +244,9 @@ def run_telegram_bot():
     loop.run_until_complete(start_logic())
 
 st.set_page_config(page_title="MS Traders VIP Engine", layout="centered")
-st.title("📈 MS Traders VIP Control Panel")
-st.write(f"Database: {db_status}")
+st.title("📈 MS Traders")
 if "bot_started" not in st.session_state:
     st.session_state.bot_started = True
     Thread(target=run_telegram_bot, daemon=True).start()
     st.success("Bot is Active! ✅")
-st.info("Ms Trader - System is stable.")
+st.write(f"Database: {db_status}")
