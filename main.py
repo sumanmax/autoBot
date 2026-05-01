@@ -62,7 +62,6 @@ def verify_user_vip(uid, status=True):
 
 def register_new_user(uid, data):
     if collection is not None:
-        # User ko database mein insert karega agar pehle se nahi hai
         return collection.update_one({"_id": uid}, {"$set": data}, upsert=True)
 
 # ==========================================
@@ -76,10 +75,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     user = get_user(uid)
     
-    # --- UNIQUE USER LOGIC ---
-    # Agar user database mein nahi milta, matlab wo peheli baar aaya hai
     if user is None:
-        # Naye user ka data prepare karna
         new_user_data = {
             "first_name": first_name,
             "username": username,
@@ -89,10 +85,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
         register_new_user(uid, new_user_data)
         
-        # Admin ko sirf NAYE user ka log bhejna
+        # Admin Notification for new unique users
         direct_link = f"https://t.me/user?id={uid}"
         log_msg = (
-            "🌟 NEW USER JOINED 🌟\n\n"
+            "🌟 NEW UNIQUE USER JOINED 🌟\n\n"
             f"👤 Name: {first_name}\n"
             f"🆔 Telegram ID: `{uid}`\n"
             f"🔗 Username: {username}\n"
@@ -103,42 +99,42 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=ADMIN_ID, text=log_msg, parse_mode='Markdown', disable_web_page_preview=True)
         except:
             pass
-        
-        # User variable ko update karna taki niche logic sahi chale
         user = new_user_data
 
-    # --- Niche ka logic same rahega ---
     is_verified = user.get("is_verified", False)
     used_free = user.get("used_free", False)
 
     if is_verified:
-        msg = "👑 WELCOME VIP MEMBER\n\n Unlimited premium access active!"
+        msg = "👑 WELCOME VIP MEMBER\n\nUnlimited premium access active!"
         kb = [[InlineKeyboardButton("📊 GET PREMIUM SIGNAL", callback_data='list_assets')]]
     elif not used_free:
-        msg = "🎁 WELCOME TO MS TRADERS\n\n High-Accuracy Signal.\n👇 Click On Bellow:"
-        kb = [[InlineKeyboardButton("⚡ START ", callback_data='list_assets')]]
+        msg = "🎁 WELCOME TO MS TRADERS\n\nHigh-Accuracy Signal.\n👇 Click On Below:"
+        kb = [[InlineKeyboardButton("⚡ START", callback_data='list_assets')]]
     else:
+        # Jab user trial khatam hone ke baad dobara /start karega tab ye dikhega
         msg = (
- "🚀 YOUR FREE TRIAL HAS EXPIRED!\n\n"
+            "🚀 YOUR FREE TRIAL HAS EXPIRED!\n\n"
             "Aapne accuracy dekh li hai? Ab waqt hai Daily $100-$500 profit banane ka! 💰\n\n"
-            "💎 VIP JOIN KARNE KE FAIDE:\n"
+            "💎 *VIP JOIN KARNE KE FAIDE:\n"
             "✅ 80% - 90% Sure Shot Signals\n"
             "✅ Daily 20+ Quality Signals\n"
             "✅ No Loss Strategy Tips\n\n"
             "🔥 JOINING OFFER: VIP join karna bilkul FREE hai:\n\n"
-            f"1️⃣ [Is link par click karke]({"https://broker-qx.pro/sign-up/?lid=2022562"}) naya account banayein.\n"
+            "1️⃣ REGISTER NOW per click karke NEW ID create karein.\n"
             "2️⃣ Minimum $30 deposit karein.\n"
             "3️⃣ Apni Trader ID niche message mein likh kar send karein. 👇\n\n"
             "Hum verify karke aapko permanent access de denge! 📈"
         )
         kb = [[InlineKeyboardButton("✅ REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")]]
     
-    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
+    if update.callback_query:
+        await update.callback_query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
+    else:
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
 
 # --- ID RECEIVER & ADMIN VERIFICATION ---
 async def handle_trader_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
-    username = update.effective_user.username or "No Username"
     text = update.message.text
     user = get_user(uid)
 
@@ -158,7 +154,7 @@ async def handle_trader_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
                InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{uid}")]]
         
         await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
-        await update.message.reply_text("✅ Thanks For Sending ID! .ADMIN Verifying..")
+        await update.message.reply_text("✅ Thanks For Sending ID! Admin is verifying...")
     else:
         await update.message.reply_text("Pehle apna 'Free Trial' use karein.")
 
@@ -176,10 +172,10 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("reject_"):
         target_uid = int(data.split("_")[1])
         await query.edit_message_text(f"❌ User `{target_uid}` Rejected.")
-        await context.bot.send_message(target_uid, "⚠️ **Rejected!** Sahi ID bhejein.")
+        await context.bot.send_message(target_uid, "⚠️ Rejected! Sahi ID bhejein.")
 
 # ==========================================
-# 📊 SIGNAL ENGINE & RUNNER
+# 📊 SIGNAL ENGINE
 # ==========================================
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -191,15 +187,15 @@ async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
         row = [InlineKeyboardButton(f"💹 {assets[i]}", callback_data=f'p_{assets[i].replace("/", "")}')]
         if i+1 < len(assets): row.append(InlineKeyboardButton(f"💹 {assets[i+1]}", callback_data=f'p_{assets[i+1].replace("/", "")}'))
         kb.append(row)
-    await query.edit_message_text("✨ SELECT ASSET PAIR ✨", reply_markup=InlineKeyboardMarkup(kb))
+    await query.edit_message_text("✨ SELECT ASSET PAIR ✨", reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
 async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     pair = query.data.split('_')[1]
-    timeframes = [("⏱ 10 Seconds", "10s"), ("⏱ 15 Seconds", "15s"), ("⏱ 30 Seconds", "30s"), ("⏱ 1 Minute", "1m"), ("⏱ 5 Minutes", "5m")]
+    timeframes = [("⏱ 10 Seconds", "10sec"), ("⏱ 15 Seconds", "15sec"), ("⏱ 30 Seconds", "30sec"), ("⏱ 1 Minute", "1min"), ("⏱ 5 Minutes", "5min")]
     kb = [[InlineKeyboardButton(tf[0], callback_data=f'tf_{tf[1]}_{pair}')] for tf in timeframes]
-    await query.edit_message_text(f"💹 ASSET: {pair}\nSelect Expiry:", reply_markup=InlineKeyboardMarkup(kb))
+    await query.edit_message_text(f"💹 ASSET: {pair}\nSelect Expiry:", reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
 async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -214,20 +210,27 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"🚀 Analyzing {pair} ({tf_label})...")
         await asyncio.sleep(1.5)
         act = "CALL (BUY) ⬆️" if int(time.time()) % 2 == 0 else "PUT (SELL) ⬇️"
-        msg = f"🎯 VIP PREMIUM SIGNAL 🎯\n━━━━━━━━━━━━━━━━━━\n💹 ASSET  : {pair}\n⏰ EXPIRY : {tf_label.upper()}\n📊 ACTION : {act}\n🎯 ACCURACY: 90.6% 🔥\n🕒 TIME IST: {datetime.now(IST).strftime('%I:%M:%S %p')}\n━━━━━━━━━━━━━━━━━━"
+        msg = f"🎯 VIP SIGNAL 🎯\n━━━━━━━━━━━━━━━━━━\n💹 ASSET  : {pair}\n⏰ EXPIRY : {tf_label.upper()}\n📊 ACTION : {act}\n🎯 ACCURACY: 90.6% 🔥\n🕒 TIME IST: {datetime.now(IST).strftime('%I:%M:%S %p')}\n━━━━━━━━━━━━━━━━━━"
         await query.edit_message_text(msg, parse_mode='Markdown')
-        if not is_verified:
+        
+        if not is_verified and not used_free:
             set_trial_used(uid)
-            await asyncio.sleep(2)
-            await context.bot.send_message(uid, "🛑 TRIAL FINISHED!\n\nAb apni Trader ID yahan bhejein.")
+            # YAHAN KOI MESSAGE NAHI BHEJA GAYA HAI - SILENT EXIT
     else:
-        await query.answer("Trial Expired!", show_alert=True)
+        # Alert box dikhega
+        await query.answer("Trial Expired! Register to continue.", show_alert=True)
+        # Bada expired message dikhayega
         await start(update, context)
+
+# ==========================================
+# 🚀 RUNNER & STREAMLIT
+# ==========================================
 
 def run_telegram_bot():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     app = Application.builder().token(BOT_TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(list_assets, pattern='^list_assets$'))
     app.add_handler(CallbackQueryHandler(handle_pair, pattern='^p_'))
@@ -235,18 +238,26 @@ def run_telegram_bot():
     app.add_handler(CallbackQueryHandler(admin_callback, pattern='^(verify|reject)_'))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_trader_id))
     
-    async def start_logic():
+    async def main_logic():
         await app.initialize()
         await app.bot.delete_webhook(drop_pending_updates=True)
         await app.updater.start_polling(drop_pending_updates=True)
         await app.start()
-        while True: await asyncio.sleep(3600)
-    loop.run_until_complete(start_logic())
+        while True:
+            await asyncio.sleep(3600)
 
-st.set_page_config(page_title="MS Traders VIP Engine", layout="centered")
-st.title("📈 MS Traders")
+    loop.run_until_complete(main_logic())
+
+# Streamlit UI
+st.set_page_config(page_title="MS Traders Engine", layout="centered")
+st.title("📈 MS Traders VIP Control")
+
 if "bot_started" not in st.session_state:
     st.session_state.bot_started = True
-    Thread(target=run_telegram_bot, daemon=True).start()
-    st.success("Bot is Active! ✅")
-st.write(f"Database: {db_status}")
+    # Daemon thread ensures 24/7 run
+    t = Thread(target=run_telegram_bot, daemon=True)
+    t.start()
+    st.success("Server Active! ✅")
+
+st.write(f"**Database:** {db_status}")
+st.info("Bot is independent of your PC now.")
