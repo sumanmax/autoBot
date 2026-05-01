@@ -52,9 +52,13 @@ def get_user(uid):
         return collection.find_one({"_id": uid})
     return None
 
+def increment_expired_count(uid):
+    if collection is not None:
+        collection.update_one({"_id": uid}, {"$inc": {"expired_shown": 1}}, upsert=True)
+
 def set_trial_used(uid):
     if collection is not None:
-        collection.update_one({"_id": uid}, {"$set": {"used_free": True}}, upsert=True)
+        collection.update_one({"_id": uid}, {"$set": {"used_free": True, "expired_shown": 0}}, upsert=True)
 
 def verify_user_vip(uid, status=True):
     if collection is not None:
@@ -70,63 +74,61 @@ def register_new_user(uid, data):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
-    first_name = update.effective_user.first_name
-    username = f"@{update.effective_user.username}" if update.effective_user.username else "No Username"
-    
     user = get_user(uid)
     
     if user is None:
         new_user_data = {
-            "first_name": first_name,
-            "username": username,
+            "first_name": update.effective_user.first_name,
+            "username": f"@{update.effective_user.username}" if update.effective_user.username else "No Username",
             "is_verified": False,
             "used_free": False,
+            "expired_shown": 0,
             "join_date": datetime.now(IST).strftime('%Y-%m-%d %I:%M %p')
         }
         register_new_user(uid, new_user_data)
-        
-        # Admin Notification for new unique users
-        direct_link = f"https://t.me/user?id={uid}"
-        log_msg = (
-            "🌟 NEW UNIQUE USER JOINED 🌟\n\n"
-            f"👤 Name: {first_name}\n"
-            f"🆔 Telegram ID: `{uid}`\n"
-            f"🔗 Username: {username}\n"
-            f"💬 [DIRECT CHAT LINK]({direct_link})\n"
-            f"⏰ Time: {datetime.now(IST).strftime('%I:%M %p')}\n"
-        )
-        try:
-            await context.bot.send_message(chat_id=ADMIN_ID, text=log_msg, parse_mode='Markdown', disable_web_page_preview=True)
-        except:
-            pass
         user = new_user_data
+        
+        # Admin Notification
+        try:
+            direct_link = f"https://t.me/user?id={uid}"
+            log_msg = f"🌟 NEW USER JOINED 🌟\n\n👤 **Name:** {update.effective_user.first_name}\n🆔 **ID:** `{uid}`\n💬 [DIRECT CHAT]({direct_link})"
+            await context.bot.send_message(chat_id=ADMIN_ID, text=log_msg, parse_mode='Markdown', disable_web_page_preview=True)
+        except: pass
 
     is_verified = user.get("is_verified", False)
     used_free = user.get("used_free", False)
+    expired_count = user.get("expired_shown", 0)
 
     if is_verified:
         msg = "👑 WELCOME VIP MEMBER\n\nUnlimited premium access active!"
         kb = [[InlineKeyboardButton("📊 GET PREMIUM SIGNAL", callback_data='list_assets')]]
+    
     elif not used_free:
         msg = "🎁 WELCOME TO MS TRADERS\n\nHigh-Accuracy Signal.\n👇 Click On Below:"
         kb = [[InlineKeyboardButton("⚡ START", callback_data='list_assets')]]
-    else:
-        # Jab user trial khatam hone ke baad dobara /start karega tab ye dikhega
-        msg = (
-            "🚀 YOUR FREE TRIAL HAS EXPIRED!\n\n"
-            "Aapne accuracy dekh li hai? Ab waqt hai Daily $100-$500 profit banane ka! 💰\n\n"
-            "💎 *VIP JOIN KARNE KE FAIDE:\n"
-            "✅ 80% - 90% Sure Shot Signals\n"
-            "✅ Daily 20+ Quality Signals\n"
-            "✅ No Loss Strategy Tips\n\n"
-            "🔥 JOINING OFFER: VIP join karna bilkul FREE hai:\n\n"
-            "1️⃣ REGISTER NOW per click karke NEW ID create karein.\n"
-            "2️⃣ Minimum $30 deposit karein.\n"
-            "3️⃣ Apni Trader ID niche message mein likh kar send karein. 👇\n\n"
-            "Hum verify karke aapko permanent access de denge! 📈"
-        )
-        kb = [[InlineKeyboardButton("✅ REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")]]
     
+    else:
+        # Strike Rule logic
+        if expired_count >= 3:
+            msg = f"⚠️ ACCOUNT ON HOLD\n\nAapne baar-baar try kiya hai. Please help ke liye support team se contact karein:\n\n🔗 Contact: {"@mstraders7"}"
+            kb = [[InlineKeyboardButton("💬 CONTACT SUPPORT", url=f"https://t.me/{"@mstraders7"[1:]}")]]
+        else:
+            msg = (
+                "🚀 YOUR FREE TRIAL HAS EXPIRED!\n\n"
+                "Aapne accuracy dekh li hai? Ab waqt hai Daily $100-$500 profit banane ka! 💰\n\n"
+                "💎 VIP JOIN KARNE KE FAIDE:\n"
+                "✅ 80% - 90% Sure Shot Signals\n"
+                "✅ Daily 20+ Quality Signals\n"
+                "✅ No Loss Strategy Tips\n\n"
+                "🔥 JOINING OFFER: VIP join karna bilkul FREE hai:\n\n"
+                "1️⃣ [REGISTER NOW per click karke NEW ID create karein.\n"
+                "2️⃣ Minimum $30 deposit karein.\n"
+                "3️⃣ Apni Trader ID niche message mein likh kar send karein. 👇\n\n"
+                "Hum verify karke aapko permanent access de denge! 📈"
+            )
+            kb = [[InlineKeyboardButton("✅ REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")]]
+            increment_expired_count(uid)
+
     if update.callback_query:
         await update.callback_query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
     else:
@@ -143,39 +145,28 @@ async def handle_trader_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user and user.get("used_free", False):
         direct_link = f"https://t.me/user?id={uid}"
-        admin_msg = (
-            "🔔 VERIFICATION REQUEST\n\n"
-            f"👤 User: {update.effective_user.first_name}\n"
-            f"🆔 Trader ID: `{text}`\n"
-            f"💬 [CHAT WITH USER]({direct_link})\n\n"
-            "Verify?"
-        )
+        admin_msg = f"🔔 VERIFICATION REQUEST\n\n👤 User: {update.effective_user.first_name}\n🆔 Trader ID: `{text}`\n💬 [CHAT]({direct_link})"
         kb = [[InlineKeyboardButton("✅ VERIFY", callback_data=f"verify_{uid}"),
                InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{uid}")]]
-        
         await context.bot.send_message(chat_id=ADMIN_ID, text=admin_msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown', disable_web_page_preview=True)
         await update.message.reply_text("✅ Thanks For Sending ID! Admin is verifying...")
-    else:
-        await update.message.reply_text("Pehle apna 'Free Trial' use karein.")
 
 async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     await query.answer()
-
     if data.startswith("verify_"):
         target_uid = int(data.split("_")[1])
         verify_user_vip(target_uid, True)
         await query.edit_message_text(f"✅ User `{target_uid}` Verified.")
-        await context.bot.send_message(target_uid, "🎊 ID Verified! VIP signals active! /start.")
-
+        await context.bot.send_message(target_uid, "🎊 ID Verified! VIP Access Active! /start.")
     elif data.startswith("reject_"):
         target_uid = int(data.split("_")[1])
         await query.edit_message_text(f"❌ User `{target_uid}` Rejected.")
-        await context.bot.send_message(target_uid, "⚠️ Rejected! Sahi ID bhejein.")
+        await context.bot.send_message(target_uid, "⚠️ Rejected! Correct ID bhejein.")
 
 # ==========================================
-# 📊 SIGNAL ENGINE
+# 📊 SIGNAL ENGINE (Same Assets & Timeframes)
 # ==========================================
 
 async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -193,6 +184,7 @@ async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     pair = query.data.split('_')[1]
+    # SAME ORIGINAL TIMEFRAMES
     timeframes = [("⏱ 10 Seconds", "10sec"), ("⏱ 15 Seconds", "15sec"), ("⏱ 30 Seconds", "30sec"), ("⏱ 1 Minute", "1min"), ("⏱ 5 Minutes", "5min")]
     kb = [[InlineKeyboardButton(tf[0], callback_data=f'tf_{tf[1]}_{pair}')] for tf in timeframes]
     await query.edit_message_text(f"💹 ASSET: {pair}\nSelect Expiry:", reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
@@ -210,16 +202,13 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"🚀 Analyzing {pair} ({tf_label})...")
         await asyncio.sleep(1.5)
         act = "CALL (BUY) ⬆️" if int(time.time()) % 2 == 0 else "PUT (SELL) ⬇️"
-        msg = f"🎯 VIP SIGNAL 🎯\n━━━━━━━━━━━━━━━━━━\n💹 ASSET  : {pair}\n⏰ EXPIRY : {tf_label.upper()}\n📊 ACTION : {act}\n🎯 ACCURACY: 90.6% 🔥\n🕒 TIME IST: {datetime.now(IST).strftime('%I:%M:%S %p')}\n━━━━━━━━━━━━━━━━━━"
+        msg = f"🎯 VIP PREMIUM SIGNAL 🎯\n━━━━━━━━━━━━━━━━━━\n💹 ASSET  : {pair}\n⏰ EXPIRY : {tf_label.upper()}\n📊 ACTION : {act}\n🎯 ACCURACY: 90.6% 🔥\n🕒 TIME IST: {datetime.now(IST).strftime('%I:%M:%S %p')}\n━━━━━━━━━━━━━━━━━━"
         await query.edit_message_text(msg, parse_mode='Markdown')
         
         if not is_verified and not used_free:
             set_trial_used(uid)
-            # YAHAN KOI MESSAGE NAHI BHEJA GAYA HAI - SILENT EXIT
     else:
-        # Alert box dikhega
-        await query.answer("Trial Expired! Register to continue.", show_alert=True)
-        # Bada expired message dikhayega
+        await query.answer("Trial Expired!", show_alert=True)
         await start(update, context)
 
 # ==========================================
@@ -243,21 +232,16 @@ def run_telegram_bot():
         await app.bot.delete_webhook(drop_pending_updates=True)
         await app.updater.start_polling(drop_pending_updates=True)
         await app.start()
-        while True:
-            await asyncio.sleep(3600)
-
+        while True: await asyncio.sleep(3600)
     loop.run_until_complete(main_logic())
 
-# Streamlit UI
 st.set_page_config(page_title="MS Traders Engine", layout="centered")
-st.title("📈 MS Traders VIP Control")
+st.title("📈 MS Traders VIP")
 
 if "bot_started" not in st.session_state:
     st.session_state.bot_started = True
-    # Daemon thread ensures 24/7 run
     t = Thread(target=run_telegram_bot, daemon=True)
     t.start()
     st.success("Server Active! ✅")
 
-st.write(f"**Database:** {db_status}")
-st.info("Bot is independent of your PC now.")
+st.write(f"Database: {db_status}")
