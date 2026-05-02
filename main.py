@@ -132,8 +132,7 @@ msg = (
         )
         kb = [
             [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-            [InlineKeyboardButton("💬 SUPPORT", url="@mstraders7")]
-        ]
+           [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/@MSTRADERS7")]
 
     await update.effective_message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
