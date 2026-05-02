@@ -123,20 +123,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 else:
         # Dekhiye 'msg' aur 'kb' wali lines 'else' se thoda aage (indented) hain
 else:
+else:
+        # Dekhiye 'msg' else se thoda aage shuru ho raha hai
         msg = (
-            "🚀 KYA AAP BHI DAILY LOSS KAR RAHE HAIN?\n"
+            "🚀 **KYA AAP BHI DAILY LOSS KAR RAHE HAIN?**\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "Ab loss ko profit mein badalne ka waqt aa gaya hai! Hamare VIP members rozana "
-            "$50 - $500 tak ka profit nikal rahe hain hamare 96% Sureshot Signals se.\n\n"
-            "👇 VIP Bilkul FREE Join Karein:\n"
+            "**$50 - $500** tak ka profit nikal rahe hain hamare **96% Sureshot Signals** se.\n\n"
+            "👇 **VIP Bilkul FREE Join Karein:**\n"
             "1️⃣ Niche link se naya account banayein:\n"
-            f"🔗 {"https://broker-qx.pro/sign-up/?lid=2022562"}\n"
-            "2️⃣ Minimum $30 Deposit karein.\n"
+            f"🔗 {REG_LINK}\n"
+            "2️⃣ Minimum **$30 Deposit** karein.\n"
             "3️⃣ Deposit ke baad niche Support button par click karke apni Trader ID bhejein."
         )
+        # 'kb' bhi 'msg' ki line ke barabar hona chahiye
         kb = [
-            [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-            [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/@mstraders7")]
+            [InlineKeyboardButton("🔗 REGISTER NOW", url=REG_LINK)],
+            [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/Aapka_Username")]
         ]
 
     await update.effective_message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
