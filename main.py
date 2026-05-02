@@ -113,7 +113,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 2. Logic Check for Access
     if user.get("is_verified"):
-        msg = "💎 MS TRADERS VIP 💎\n━━━━━━━━━━━━━━━━━━\n✅ Status: Lifetime VIP Active\n🚀AI: V5 Ultra Adaptive\n━━━━━━━━━━━━━━━━━━"
+        msg = "💎 MS TRADERS VIP 💎\n━━━━━━━━━━━━━━━━━━\n✅ LIVETIME VIP ACTIVE\n🚀AI\n━━━━━━━━━━━━━━━━━━"
         kb = [[InlineKeyboardButton("📊 START ANALYSIS", callback_data='list_assets')]]
     elif not user.get("used_free"):
         msg = f"👋 Welcome {u.first_name}!\n96% Accuracy signals!"
