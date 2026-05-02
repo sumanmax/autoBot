@@ -120,19 +120,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kb = [[InlineKeyboardButton("⚡ GET FREE SIGNAL", callback_data='list_assets')]]
     else:
         # Convincing Message for Expired Users
-msg = (
-        "⚠️ TRIAL PERIOD ENDED!\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "Aapne accuracy dekh li? Ye toh sirf ek trailer tha! Asli profit toh VIP group mein ho raha hai...\n\n"
-        "💎 JOIN VIP FOR FREE:\n"
-        f"👉 [Register Link]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n"
-        "👉 Deposit $30 or more.\n"
-        "👉 Send your ID here for activation."
-        "🔥 Limited Slots Left for Lifetime Access!"
+else:
+        # Dekhiye 'msg' aur 'kb' wali lines 'else' se thoda aage (indented) hain
+        msg = (
+            "🚀 FREE SIGNAL END\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Ab loss ko profit mein badalne ka waqt aa gaya hai! Hamare VIP members rozana "
+            "$50 - $500 tak ka profit nikal rahe hain hamare 96% Sureshot Signals se.\n\n"
+            "💎 VIP Join Karne Ke Fayde:\n"
+            "✅ Daily 10-15 High Accuracy Signals.\n"
+            "✅ 10s, 15s, aur 1m Scalping Strategy.\n"
+            "✅ Lifetime Access (No Monthly Fees).\n\n"
+            "👇 VIP Bilkul FREE Join Karein:**==\n"
+            "1️⃣ Niche link se naya account banayein:\n"
+            f"🔗 {"https://broker-qx.pro/sign-up/?lid=2022562"}\n"
+            "2️⃣ Minimum $30 Deposit or more karein.\n"
+            "3️⃣ Apni Trader ID  yahan message me send karein."
         )
         kb = [
             [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-           [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/@MSTRADERS7")]
+            [InlineKeyboardButton("💬 SEND TRADER ID", callback_data='verify_id_prompt')]
+        ]
 
     await update.effective_message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
 
