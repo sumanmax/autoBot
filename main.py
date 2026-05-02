@@ -122,24 +122,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Convincing Message for Expired Users
 else:
         # Dekhiye 'msg' aur 'kb' wali lines 'else' se thoda aage (indented) hain
+else:
         msg = (
-            "🚀 FREE SIGNAL END\n"
+            "🚀 KYA AAP BHI DAILY LOSS KAR RAHE HAIN?\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "Ab loss ko profit mein badalne ka waqt aa gaya hai! Hamare VIP members rozana "
             "$50 - $500 tak ka profit nikal rahe hain hamare 96% Sureshot Signals se.\n\n"
-            "💎 VIP Join Karne Ke Fayde:\n"
-            "✅ Daily 10-15 High Accuracy Signals.\n"
-            "✅ 10s, 15s, aur 1m Scalping Strategy.\n"
-            "✅ Lifetime Access (No Monthly Fees).\n\n"
-            "👇 VIP Bilkul FREE Join Karein:**==\n"
+            "👇 VIP Bilkul FREE Join Karein:\n"
             "1️⃣ Niche link se naya account banayein:\n"
             f"🔗 {"https://broker-qx.pro/sign-up/?lid=2022562"}\n"
-            "2️⃣ Minimum $30 Deposit or more karein.\n"
-            "3️⃣ Apni Trader ID  yahan message me send karein."
+            "2️⃣ Minimum $30 Deposit karein.\n"
+            "3️⃣ Deposit ke baad niche Support button par click karke apni Trader ID bhejein."
         )
         kb = [
             [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-            [InlineKeyboardButton("💬 SEND TRADER ID", callback_data='verify_id_prompt')]
+            [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/@mstraders7")]
         ]
 
     await update.effective_message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
