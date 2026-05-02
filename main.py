@@ -12,7 +12,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # --- CONFIGURATION ---
-BOT_TOKEN = "8734653401:AAEzuZxQNxP_TBZ6anYru-K9vhbb0xRTAVc"
+BOT_TOKEN = "8734653401:AAGXwnuE6SVYWyaPlOPn-76KLL1vTsMoCOE"
 ADMIN_ID = 7852639173 
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
@@ -76,10 +76,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = (
             "💎 WELCOME TO VIP 💎\n"
             "━━━━━━━━━━━━━━━━━━\n"
-            "✅ Account Status: VERIFIED\n"
-            "🔥 System: AI-Real Time Analysis\n"
+            "✅VERIFIED SIGNALS\n"
             "━━━━━━━━━━━━━━━━━━\n"
-            "Click below to get your high-accuracy signal."
         )
         kb = [[InlineKeyboardButton("📊 GET VIP SIGNAL", callback_data='list_assets')]]
     elif not used_free:
@@ -192,7 +190,7 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, tf, pair = query.data.split('_')
 
     for step in ["🔍 Analyzing Market...", "📊 Calculating Score...", "⚡ Finding Entry..."]:
-        await query.edit_message_text(f"⏳ **{pair}**\n{step}")
+        await query.edit_message_text(f"⏳ {pair}\n{step}")
         await asyncio.sleep(random.uniform(1.1, 1.4))
 
     act, acc_score = get_market_score(pair, tf)
@@ -201,7 +199,7 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"━━━━━━━━━━━━━━━━━━\n"
         f"💹 ASSET  : {pair}\n"
         f"📊 DIRACTION : {act}\n"
-        f"🔥 ACCURACY: {acc_score}% (Real Score)\n"
+        f"🔥 ACCURACY: {acc_score}%\n"
     )
     await query.edit_message_text(msg, parse_mode='Markdown')
 
