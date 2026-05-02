@@ -120,15 +120,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kb = [[InlineKeyboardButton("⚡ GET FREE SIGNAL", callback_data='list_assets')]]
     else:
         # Convincing Message for Expired Users
-        msg = (
-            "🚀 ACCURACY DEKHI? AB PROFIT KI BAARI!\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "Aapka trial khatam ho chuka hai. Daily SureShot Signals ke liye VIP join karein!\n\n"
-            "1️⃣ Niche register now per New Account banayein.\n"
-            "2️⃣ Min $30 Deposit karein.\n"
-            "3️⃣ Apni Trader ID yahan message mein bhejein.\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "🔥 *Limited Slots Left for Lifetime Access!*"
+msg = (
+        "⚠️ TRIAL PERIOD ENDED!\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Aapne accuracy dekh li? Ye toh sirf ek trailer tha! Asli profit toh VIP group mein ho raha hai...\n\n"
+        "💎 **JOIN VIP FOR FREE:**\n"
+        f"👉 [Register Link]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n"
+        "👉 Deposit $30 or more.\n"
+        "👉 Send your ID here for activation."
+        "🔥 *Limited Slots Left for Lifetime Access!*"
         )
         kb = [
             [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
