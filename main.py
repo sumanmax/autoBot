@@ -116,7 +116,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = "💎 MS TRADERS VIP 💎\n━━━━━━━━━━━━━━━━━━\n✅ Status: Lifetime VIP Active\n🚀AI: V5 Ultra Adaptive\n━━━━━━━━━━━━━━━━━━"
         kb = [[InlineKeyboardButton("📊 START ANALYSIS", callback_data='list_assets')]]
     elif not user.get("used_free"):
-        msg = f"👋 Welcome {u.first_name}!\n\96% Accuracy signals!"
+        msg = f"👋 Welcome {u.first_name}!\n96% Accuracy signals!"
         kb = [[InlineKeyboardButton("⚡ GET FREE SIGNAL", callback_data='list_assets')]]
     else:
         # Convincing Message for Expired Users
@@ -237,7 +237,9 @@ def run_bot():
     app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
     app.add_handler(CallbackQueryHandler(admin_action, pattern='^[v|r]_'))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.run_polling(drop_pending_updates=True)
+    
+    # YAHAN CHANGE HAI: stop_signals=False zaroori hai thread ke liye
+    app.run_polling(drop_pending_updates=True, stop_signals=False)
 
 if "bot_active" not in st.session_state:
     st.session_state.bot_active = True
