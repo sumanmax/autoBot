@@ -124,15 +124,15 @@ msg = (
         "⚠️ TRIAL PERIOD ENDED!\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "Aapne accuracy dekh li? Ye toh sirf ek trailer tha! Asli profit toh VIP group mein ho raha hai...\n\n"
-        "💎 **JOIN VIP FOR FREE:**\n"
+        "💎 JOIN VIP FOR FREE:\n"
         f"👉 [Register Link]({"https://broker-qx.pro/sign-up/?lid=2022562"})\n"
         "👉 Deposit $30 or more.\n"
         "👉 Send your ID here for activation."
-        "🔥 *Limited Slots Left for Lifetime Access!*"
+        "🔥 Limited Slots Left for Lifetime Access!"
         )
         kb = [
             [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-            [InlineKeyboardButton("💬 VERIFY MY ID", callback_data='verify_id_prompt')]
+            [InlineKeyboardButton("💬 SUPPORT", url="@mstraders7")]
         ]
 
     await update.effective_message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
