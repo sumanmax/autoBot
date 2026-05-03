@@ -47,7 +47,7 @@ def connect_iq():
     return True
 
 # ==========================================
-# 🧠 IMPROVED ENGINE (STABLE & ACCURATE)
+# 🧠 TRADING ENGINE
 # ==========================================
 
 def get_multi_tf_signal(pair, tf):
@@ -57,7 +57,6 @@ def get_multi_tf_signal(pair, tf):
         tf_map = {"10s": 10, "15s": 15, "30s": 30, "1m": 60, "5m": 300}
         duration = tf_map.get(tf, 60)
         
-        # Fresh data fetching (Prevents 1s hang)
         candles = Iq.get_candles(asset, duration, 60, time.time())
         
         if candles:
@@ -92,8 +91,8 @@ def get_multi_tf_signal(pair, tf):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     u = update.effective_user
     uid = u.id
+    
     user = users_ref.find_one({"_id": uid})
-
     if user is None:
         data = {"_id": uid, "name": u.first_name, "is_verified": False, "used_free": False}
         users_ref.insert_one(data)
@@ -102,17 +101,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(ADMIN_ID, f"🆕 NEW USER: {u.first_name} ({uid})")
         except: pass
 
-    # 1. VIP User View
+    # 1. VIP User Logic
     if user.get("is_verified"):
         msg = "💎 MS TRADERS VIP 💎\n━━━━━━━━━━━━━━━━━━\n✅ LIFETIME VIP ACTIVE\n🚀 AI VERIFIED SIGNALS\n━━━━━━━━━━━━━━━━━━"
         kb = [[InlineKeyboardButton("📊 START ANALYSIS", callback_data='list_assets')]]
     
-    # 2. Free User View
-    elif not user.get("used_free"):
-        msg = f"👋 Welcome {u.first_name}!\n96% Accuracy signals!"
+    # 2. First Time User (Free signal available)
+    elif user.get("used_free") == False:
+        msg = "Welcome To Our Family ❤️\n\nThanks for to join us!"
         kb = [[InlineKeyboardButton("⚡ GET FREE SIGNAL", callback_data='list_assets')]]
     
-    # 3. Expired/Registration View (Original Restored)
+    # 3. 2nd Time Start (After using free signal) - Convince Message
     else:
         msg = (
             "🚀 YOUR FREE SIGNALS END\n"
@@ -136,8 +135,9 @@ async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = query.from_user.id
     user = users_ref.find_one({"_id": uid})
     
-    if user.get("used_free") and not user.get("is_verified"):
-        await start(update, context) # Show registration message
+    # Security: If they already used free signal and try to list assets again without VIP
+    if user.get("used_free") == True and not user.get("is_verified"):
+        await start(update, context) # This will trigger the convince message
         return
 
     assets = [
@@ -170,7 +170,7 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = query.from_user.id
     user = users_ref.find_one({"_id": uid})
     
-    if user.get("used_free") and not user.get("is_verified"):
+    if user.get("used_free") == True and not user.get("is_verified"):
         await start(update, context)
         return
 
@@ -178,7 +178,7 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, tf, pair = query.data.split('_', 2)
 
     for i in range(5, 0, -1):
-        await query.edit_message_text(f"⏳ ANALYZING MARKET... {i}s\n💹 Pair: {pair}\n⏱ TF: {tf}")
+        await query.edit_message_text(f"⏳ ANALYZING MARKET... {i}s\n💹 Pair: {pair}\n⏱ Time Frame: {tf}")
         await asyncio.sleep(1)
 
     act, acc_score = get_multi_tf_signal(pair, tf)
@@ -194,6 +194,7 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await query.edit_message_text(msg, parse_mode='Markdown')
     
+    # Important: Mark free signal as used right after generation
     if not user.get("is_verified"): 
         users_ref.update_one({"_id": uid}, {"$set": {"used_free": True}})
 
