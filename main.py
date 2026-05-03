@@ -128,12 +128,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "$50 - $500 tak ka profit nikal rahe hain hamare 96% Sureshot Signals se.\n\n"
             "👇 VIP Bilkul FREE Join Karein:\n"
             "1️⃣ Niche link se naya account banayein:\n"
-            f"🔗 {REG_LINK}\n"
             "2️⃣ Minimum $30 Deposit karein.\n"
             "3️⃣ Deposit ke baad niche message par apni Trader ID bhejein."
         )
         kb = [
-            [InlineKeyboardButton("🔗 REGISTER NOW", url=REG_LINK)],
+            [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
             [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/mstraders7")]
         ]
 
@@ -198,7 +197,7 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎯 VIP SURESHOT SIGNAL 🎯\n━━━━━━━━━━━━━━━━━━\n"
         f"💹 ASSET  : `{pair}`\n"
         f"⏱ TIME FRAME     : `{tf}`\n"
-        f"📊 DIRECTION : *{act}*\n"
+        f"📊 DIRECTION : {act}*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
     )
     await query.edit_message_text(msg, parse_mode='Markdown')
@@ -243,4 +242,4 @@ if "bot_active" not in st.session_state:
     st.session_state.bot_active = True
     Thread(target=run_bot, daemon=True).start()
 
-st.title("🚀 BOT ACTIVE")
+st.title("🚀 BOT ACTIVED")
