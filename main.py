@@ -113,14 +113,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 2. Logic Check for Access
     if user.get("is_verified"):
-        msg = "💎 MS TRADERS VIP 💎\n━━━━━━━━━━━━━━━━━━\n✅ LIVETIME VIP ACTIVE\n🚀AI VERIFYED SIGNALS\n━━━━━━━━━━━━━━━━━━"
+        msg = "💎 MS TRADERS VIP 💎\n━━━━━━━━━━━━━━━━━━\n✅ LIFETIME VIP ACTIVE\n🚀 AI VERIFIED SIGNALS\n━━━━━━━━━━━━━━━━━━"
         kb = [[InlineKeyboardButton("📊 START ANALYSIS", callback_data='list_assets')]]
+    
     elif not user.get("used_free"):
         msg = f"👋 Welcome {u.first_name}!\n96% Accuracy signals!"
         kb = [[InlineKeyboardButton("⚡ GET FREE SIGNAL", callback_data='list_assets')]]
-        else:
-        
-else:
+    
+    else:
         msg = (
             "🚀 YOUR FREE SIGNALS END\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
@@ -128,12 +128,13 @@ else:
             "$50 - $500 tak ka profit nikal rahe hain hamare 96% Sureshot Signals se.\n\n"
             "👇 VIP Bilkul FREE Join Karein:\n"
             "1️⃣ Niche link se naya account banayein:\n"
+            f"🔗 {REG_LINK}\n"
             "2️⃣ Minimum $30 Deposit karein.\n"
             "3️⃣ Deposit ke baad niche message par apni Trader ID bhejein."
         )
         kb = [
-            [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
-            [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/@mstraders7")]
+            [InlineKeyboardButton("🔗 REGISTER NOW", url=REG_LINK)],
+            [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/mstraders7")]
         ]
 
     await update.effective_message.reply_text(msg, reply_markup=InlineKeyboardMarkup(kb), parse_mode='Markdown')
@@ -166,8 +167,7 @@ async def list_assets(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     pair = query.data.split('_', 1)[1]
-    # 10s, 15s, 30s Timeframes included
-    tfs = [("10 SEC", "10sec"), ("15 SEC", "15sec"), ("30 SEC", "30sec"), ("1 MIN", "1min"), ("5 MIN", "5min")]
+    tfs = [("10 SEC", "10s"), ("15 SEC", "15s"), ("30 SEC", "30s"), ("1 MIN", "1m"), ("5 MIN", "5m")]
     kb = []
     for i in range(0, len(tfs), 2):
         row = [InlineKeyboardButton(tfs[i][0], callback_data=f'tf_{tfs[i][1]}_{pair}')]
@@ -187,9 +187,9 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     _, tf, pair = query.data.split('_', 2)
 
-    # 5 Second Scan Animation
+    # Scan Animation
     for i in range(5, 0, -1):
-        await query.edit_message_text(f"⏳ ANALYZING MARKET... {i}s\n💹 Pair: {pair}\n⏱ TF: {tf}\n🛠 Status: High-Precision Analysis...")
+        await query.edit_message_text(f"⏳ ANALYZING MARKET... {i}s\n💹 Pair: {pair}\n⏱ TF: {tf}")
         await asyncio.sleep(1)
 
     act, acc_score = get_multi_tf_signal(pair, tf)
@@ -203,7 +203,6 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await query.edit_message_text(msg, parse_mode='Markdown')
     
-    # Mark Free User
     if not user.get("is_verified"): 
         users_ref.update_one({"_id": uid}, {"$set": {"used_free": True}})
 
@@ -213,11 +212,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = users_ref.find_one({"_id": uid})
 
     if user and user.get("used_free") and not user.get("is_verified"):
-        # Send ID to Admin for Approval
         admin_msg = f"🔔 NEW VERIFICATION REQUEST\n👤 User: {update.effective_user.first_name}\n🆔 TG ID: `{uid}`\n📈 Trader ID: `{text}`"
         kb = [[InlineKeyboardButton("✅ APPROVE", callback_data=f"v_{uid}"), InlineKeyboardButton("❌ REJECT", callback_data=f"r_{uid}")]]
         await context.bot.send_message(ADMIN_ID, admin_msg, reply_markup=InlineKeyboardMarkup(kb))
-        await update.message.reply_text("✅ ID Submitted! Please wait adiming verifying")
+        await update.message.reply_text("✅ ID Submitted! Please wait admin is verifying.")
 
 async def admin_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -225,7 +223,7 @@ async def admin_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_id = int(target_id)
     if action == 'v':
         users_ref.update_one({"_id": target_id}, {"$set": {"is_verified": True}})
-        await context.bot.send_message(target_id, "🎊 CONGRATULATIONS! VIP ACCESS IS ACTIVED. /start")
+        await context.bot.send_message(target_id, "🎊 CONGRATULATIONS! VIP ACCESS IS ACTIVE. Type /start")
         await query.edit_message_text(f"Verified {target_id} ✅")
     else:
         await context.bot.send_message(target_id, "❌ REJECTED! Please check your Trader ID.")
@@ -239,12 +237,10 @@ def run_bot():
     app.add_handler(CallbackQueryHandler(gen_signal, pattern='^tf_'))
     app.add_handler(CallbackQueryHandler(admin_action, pattern='^[v|r]_'))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # YAHAN CHANGE HAI: stop_signals=False zaroori hai thread ke liye
     app.run_polling(drop_pending_updates=True, stop_signals=False)
 
 if "bot_active" not in st.session_state:
     st.session_state.bot_active = True
     Thread(target=run_bot, daemon=True).start()
 
-st.title("🚀 BOT ACTIVED ")
+st.title("🚀 BOT ACTIVE")
