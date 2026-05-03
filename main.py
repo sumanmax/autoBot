@@ -97,10 +97,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data = {"_id": uid, "name": u.first_name, "is_verified": False, "used_free": False}
         users_ref.insert_one(data)
         user = data
+        
+        # --- NEW USER ADMIN NOTIFICATION ---
+        now_ist = datetime.now(IST).strftime('%Y-%m-%d %H:%M:%S')
+        user_name = u.first_name if u.first_name else "N/A"
+        username = f"@{u.username}" if u.username else "N/A"
+        chat_link = f"tg://user?id={uid}"
+        
+        admin_alert = (
+            "🚀 NEW USER JOINED\n\n"
+            f"👤 Name: {user_name}\n"
+            f"🆔 Telegram ID: `{uid}`\n"
+            f"📛 Username: {username}\n"
+            f"🔗 DIRECT CHAT LINK: [Click Here]({chat_link})\n"
+            f"⏰ Time: {now_ist}"
+        )
         try:
-            await context.bot.send_message(ADMIN_ID, f"🆕 NEW USER: {u.first_name} ({uid})")
+            await context.bot.send_message(ADMIN_ID, admin_alert, parse_mode='Markdown')
         except: pass
-
     # 1. VIP User Logic
     if user.get("is_verified"):
         msg = "💎 MS TRADERS VIP 💎\n━━━━━━━━━━━━━━━━━━\n✅ LIFETIME VIP ACTIVE\n🚀 AI VERIFIED SIGNALS\n━━━━━━━━━━━━━━━━━━"
