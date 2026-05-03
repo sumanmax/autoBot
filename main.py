@@ -118,10 +118,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif not user.get("used_free"):
         msg = f"👋 Welcome {u.first_name}!\n96% Accuracy signals!"
         kb = [[InlineKeyboardButton("⚡ GET FREE SIGNAL", callback_data='list_assets')]]
-    else:
-        # Convincing Message for Expired Users
-else:
-        # Dekhiye 'msg' aur 'kb' wali lines 'else' se thoda aage (indented) hain
+        
 else:
         msg = (
             "🚀 YOUR FREE SIGNALS END\n"
