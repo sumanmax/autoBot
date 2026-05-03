@@ -17,7 +17,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # --- CONFIGURATION ---
-BOT_TOKEN = "8734653401:AAF85Z-D0un0BNMKqMVuw3lX8owELMWgG-w"
+BOT_TOKEN = "8734653401:AAF0z79TB5O8B1YcORco73lhxpsyr5rTNZk"
 ADMIN_ID = 7852639173
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
