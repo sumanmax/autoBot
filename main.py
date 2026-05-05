@@ -17,15 +17,15 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 # --- CONFIGURATION ---
-BOT_TOKEN = "8734653401:AAF0z79TB5O8B1YcORco73lhxpsyr5rTNZk"
+BOT_TOKEN = st.secrets["BOT_TOKEN"]
 ADMIN_ID = 7852639173
 REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
 IST = pytz.timezone('Asia/Kolkata')
-MONGO_URL = "mongodb+srv://atylishmax1407_db_user:max14072001@cluster0.rxd940g.mongodb.net/?retryWrites=true&w=majority"
+MONGO_URL = st.secrets["MONGO_URL"]
 
 # IQ Option Credentials
-IQ_EMAIL = "riyahalder9064@gmail.com"
-IQ_PASSWORD = "mou14072001@"
+IQ_EMAIL = st.secrets["IQ_EMAIL"]
+IQ_PASSWORD = st.secrets["IQ_PASSWORD"]
 
 # MongoDB Setup
 ca = certifi.where()
