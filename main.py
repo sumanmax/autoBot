@@ -138,7 +138,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "3️⃣ Deposit ke baad niche message par apni Trader ID bhejein."
         )
         kb = [
-            [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2022562")],
+            [InlineKeyboardButton("🔗 REGISTER NOW", url="https://broker-qx.pro/sign-up/?lid=2177783")],
             [InlineKeyboardButton("💬 CONTACT SUPPORT", url="https://t.me/mstraders7")]
         ]
 
@@ -198,7 +198,7 @@ async def gen_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     act, acc_score = get_multi_tf_signal(pair, tf)
     
     msg = (
-        f"🎯 **VIP SURESHOT SIGNAL** 🎯\n"
+        f"🎯 VIP SURESHOT SIGNAL 🎯\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"💹 ASSET  : `{pair}`\n"
         f"⏱ TIME FRAME : `{tf}`\n"
