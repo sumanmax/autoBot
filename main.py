@@ -19,7 +19,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # --- CONFIGURATION ---
 BOT_TOKEN = st.secrets["BOT_TOKEN"]
 ADMIN_ID = 7852639173
-REG_LINK = "https://broker-qx.pro/sign-up/?lid=2022562"
+REG_LINK = "https://broker-qx.pro/sign-up/?lid=2177783"
 IST = pytz.timezone('Asia/Kolkata')
 MONGO_URL = st.secrets["MONGO_URL"]
 
